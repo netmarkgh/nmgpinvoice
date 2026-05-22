@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, cn } from '../lib/utils';
 import { Search, LayoutGrid, List, BarChart3, Package, Filter, RotateCcw, Hash } from 'lucide-react';
 import { SalesAnalytics } from '../components/SalesAnalytics';
+import { InventoryIntelligence } from '../components/InventoryIntelligence';
 
 export function parseLocalDate(dateStr: string): Date | null {
   if (!dateStr) return null;
@@ -130,19 +131,30 @@ export function ItemsSoldView() {
   const [customEndDate, setCustomEndDate] = useState('');
   const [selectedClient, setSelectedClient] = useState('all');
   const [invoiceReferenceQuery, setInvoiceReferenceQuery] = useState('');
-  const [activeSection, setActiveSection] = useState<'analytics' | 'records'>('analytics');
+  const [activeSection, setActiveSection] = useState<'analytics' | 'records' | 'inventory'>('analytics');
 
   const isAdmin = profile?.role === 'admin';
   const canManageItems = isAdmin || profile?.permissions?.includes('can_manage_items');
   const canUseAdvancedFilters = isAdmin || profile?.permissions?.includes('can_use_advanced_items_filters');
   const canAccessSalesAnalytics = isAdmin || profile?.permissions?.includes('can_access_sales_analytics');
+  const canAccessInventoryIntelligence = isAdmin || profile?.permissions?.includes('can_access_inventory_intelligence');
 
-  // Fallback activeSection to 'records' if sales analytics is disabled for the user
+  // Fallback activeSection based on available user permissions to prevent unauthorized or empty views
   useEffect(() => {
-    if (!canAccessSalesAnalytics && activeSection !== 'records') {
-      setActiveSection('records');
+    if (activeSection === 'analytics' && !canAccessSalesAnalytics) {
+      if (canAccessInventoryIntelligence) {
+        setActiveSection('inventory');
+      } else {
+        setActiveSection('records');
+      }
+    } else if (activeSection === 'inventory' && !canAccessInventoryIntelligence) {
+      if (canAccessSalesAnalytics) {
+        setActiveSection('analytics');
+      } else {
+        setActiveSection('records');
+      }
     }
-  }, [canAccessSalesAnalytics, activeSection]);
+  }, [canAccessSalesAnalytics, canAccessInventoryIntelligence, activeSection]);
 
   useEffect(() => {
     if (!canManageItems) return;
@@ -329,14 +341,24 @@ export function ItemsSoldView() {
           <h1 className="text-2xl font-bold tracking-tight text-ink">Items Sold</h1>
           <p className="text-ink/40 text-sm mt-1">Inventory tracking and sales performance</p>
           
-          {canAccessSalesAnalytics && (
+          {(canAccessSalesAnalytics || canAccessInventoryIntelligence) && (
             <div className="bg-paper p-0.5 rounded-xl border border-black/5 flex text-xs font-bold uppercase mt-4 w-fit no-print">
-              <button 
-                onClick={() => setActiveSection('analytics')}
-                className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'analytics' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
-              >
-                <BarChart3 className="w-3.5 h-3.5" /> Analytics Dashboard
-              </button>
+              {canAccessSalesAnalytics && (
+                <button 
+                  onClick={() => setActiveSection('analytics')}
+                  className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'analytics' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
+                >
+                  <BarChart3 className="w-3.5 h-3.5" /> Analytics Dashboard
+                </button>
+              )}
+              {canAccessInventoryIntelligence && (
+                <button 
+                  onClick={() => setActiveSection('inventory')}
+                  className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'inventory' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
+                >
+                  <Package className="w-3.5 h-3.5" /> Inventory Intelligence
+                </button>
+              )}
               <button 
                 onClick={() => setActiveSection('records')}
                 className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'records' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
@@ -356,7 +378,7 @@ export function ItemsSoldView() {
               className="w-full sm:w-64 pl-10 pr-4 py-2 bg-white border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand"
             />
           </div>
-          {(activeSection === 'records' || !canAccessSalesAnalytics) && (
+          {activeSection === 'records' && (
             <div className="bg-white border border-black/5 p-1 rounded-xl flex gap-1 no-print">
                <button 
                 onClick={() => setGroupBy('item')}
@@ -506,6 +528,23 @@ export function ItemsSoldView() {
           <div className="p-20 text-center animate-pulse text-ink/20 font-bold">Scanning records...</div>
         ) : (
           <SalesAnalytics filteredData={filtered} currencySymbol={profile?.currency} />
+        )
+      ) : canAccessInventoryIntelligence && activeSection === 'inventory' ? (
+        loading ? (
+          <div className="p-20 text-center animate-pulse text-ink/20 font-bold">Initializing Inventory...</div>
+        ) : (
+          <InventoryIntelligence 
+            filteredData={filtered} 
+            userProfile={profile} 
+            selectedFilter={selectedDateFilter}
+            customStart={customStartDate}
+            customEnd={customEndDate}
+            onSelectProductFilter={(prodName) => {
+              setSearch(prodName);
+              setActiveSection('records');
+            }}
+            currencySymbol={profile?.currency}
+          />
         )
       ) : (
         <>
