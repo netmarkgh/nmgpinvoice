@@ -132,6 +132,7 @@ export function ItemsSoldView() {
 
   const isAdmin = profile?.role === 'admin';
   const canManageItems = isAdmin || profile?.permissions?.includes('can_manage_items');
+  const canUseAdvancedFilters = isAdmin || profile?.permissions?.includes('can_use_advanced_items_filters');
 
   useEffect(() => {
     if (!canManageItems) return;
@@ -165,13 +166,16 @@ export function ItemsSoldView() {
   }, [data]);
 
   const filtered = React.useMemo(() => {
-    let result = applyFilters(data, {
-      dateFilter: selectedDateFilter,
-      customStart: customStartDate,
-      customEnd: customEndDate,
-      selectedClient: selectedClient,
-      invoiceQuery: invoiceReferenceQuery,
-    });
+    let result = data;
+    if (canUseAdvancedFilters) {
+      result = applyFilters(data, {
+        dateFilter: selectedDateFilter,
+        customStart: customStartDate,
+        customEnd: customEndDate,
+        selectedClient: selectedClient,
+        invoiceQuery: invoiceReferenceQuery,
+      });
+    }
 
     if (search.trim()) {
       const q = search.toLowerCase().trim();
@@ -182,7 +186,7 @@ export function ItemsSoldView() {
     }
     
     return result;
-  }, [data, selectedDateFilter, customStartDate, customEndDate, selectedClient, invoiceReferenceQuery, search]);
+  }, [data, selectedDateFilter, customStartDate, customEndDate, selectedClient, invoiceReferenceQuery, search, canUseAdvancedFilters]);
 
   const totalQty = React.useMemo(() => {
     return filtered.reduce((s, r) => s + (r.quantity || 0), 0);
@@ -345,126 +349,128 @@ export function ItemsSoldView() {
       </div>
 
       {/* Advanced Filters Section */}
-      <div className="bg-white border border-black/5 p-4 md:p-6 rounded-2xl mb-6 space-y-4 shadow-sm no-print">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="text-xs uppercase tracking-wider font-bold text-ink/40 flex items-center gap-2">
-            <Filter className="w-4 h-4 text-brand" /> Advanced Filters
+      {canUseAdvancedFilters && (
+        <div className="bg-white border border-black/5 p-4 md:p-6 rounded-2xl mb-6 space-y-4 shadow-sm no-print">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="text-xs uppercase tracking-wider font-bold text-ink/40 flex items-center gap-2">
+              <Filter className="w-4 h-4 text-brand" /> Advanced Filters
+            </div>
+            {hasActiveFilters && (
+              <button 
+                onClick={handleResetFilters}
+                className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors flex items-center gap-1.5 self-start sm:self-auto"
+              >
+                <RotateCcw className="w-3.5 h-3.5 animate-spin-reverse" /> Reset All Filters
+              </button>
+            )}
           </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Date Filter */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-ink/40 uppercase ml-1">Date Period</label>
+              <select
+                value={selectedDateFilter}
+                onChange={(e) => setSelectedDateFilter(e.target.value)}
+                className="w-full px-4 py-2.5 bg-paper border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand text-ink font-medium"
+              >
+                <option value="all">All Dates</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="last7days">Last 7 Days</option>
+                <option value="last30days">Last 30 Days</option>
+                <option value="thisMonth">This Month</option>
+                <option value="lastMonth">Last Month</option>
+                <option value="custom">Custom Range...</option>
+              </select>
+            </div>
+
+            {/* Client Filter */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-ink/40 uppercase ml-1">Client / Customer</label>
+              <select
+                value={selectedClient}
+                onChange={(e) => setSelectedClient(e.target.value)}
+                className="w-full px-4 py-2.5 bg-paper border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand text-ink font-medium"
+              >
+                <option value="all">All Clients</option>
+                {uniqueClients.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Invoice Ref Filter */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-bold text-ink/40 uppercase ml-1">Invoice Reference</label>
+              <div className="relative">
+                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/30" />
+                <input 
+                  type="text"
+                  value={invoiceReferenceQuery}
+                  onChange={(e) => setInvoiceReferenceQuery(e.target.value)}
+                  placeholder="Filter by Invoice Ref..."
+                  className="w-full pl-9 pr-4 py-2 bg-paper border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand text-ink font-medium"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Conditional Custom Date Range Pickers */}
+          {selectedDateFilter === 'custom' && (
+            <div className="pt-2 border-t border-black/5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-ink/40 uppercase ml-1">Start Date</label>
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="w-full px-4 py-2 bg-paper border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand text-ink font-medium"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-ink/40 uppercase ml-1">End Date</label>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="w-full px-4 py-2 bg-paper border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand text-ink font-medium"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Active Filter Pills (Bonus Enhancement) */}
           {hasActiveFilters && (
-            <button 
-              onClick={handleResetFilters}
-              className="text-xs font-bold text-red-500 hover:text-red-600 transition-colors flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <RotateCcw className="w-3.5 h-3.5 animate-spin-reverse" /> Reset All Filters
-            </button>
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-black/5">
+              {selectedDateFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/5 font-semibold text-brand rounded-full text-[10px] uppercase tracking-wide">
+                  <span>Date: {getDateFilterLabel(selectedDateFilter, customStartDate, customEndDate)}</span>
+                  <button onClick={() => setSelectedDateFilter('all')} className="hover:text-ink transition-colors font-bold text-xs leading-none">&times;</button>
+                </span>
+              )}
+              {selectedClient !== 'all' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/5 font-semibold text-brand rounded-full text-[10px] uppercase tracking-wide">
+                  <span>Client: {selectedClient}</span>
+                  <button onClick={() => setSelectedClient('all')} className="hover:text-ink transition-colors font-bold text-xs leading-none">&times;</button>
+                </span>
+              )}
+              {invoiceReferenceQuery.trim() !== '' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/5 font-semibold text-brand rounded-full text-[10px] uppercase tracking-wide">
+                  <span>Ref: {invoiceReferenceQuery}</span>
+                  <button onClick={() => setInvoiceReferenceQuery('')} className="hover:text-ink transition-colors font-bold text-xs leading-none">&times;</button>
+                </span>
+              )}
+              {search.trim() !== '' && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/5 font-semibold text-brand rounded-full text-[10px] uppercase tracking-wide">
+                  <span>Search: {search}</span>
+                  <button onClick={() => setSearch('')} className="hover:text-ink transition-colors font-bold text-xs leading-none">&times;</button>
+                </span>
+              )}
+            </div>
           )}
         </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Date Filter */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-ink/40 uppercase ml-1">Date Period</label>
-            <select
-              value={selectedDateFilter}
-              onChange={(e) => setSelectedDateFilter(e.target.value)}
-              className="w-full px-4 py-2.5 bg-paper border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand text-ink font-medium"
-            >
-              <option value="all">All Dates</option>
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="last7days">Last 7 Days</option>
-              <option value="last30days">Last 30 Days</option>
-              <option value="thisMonth">This Month</option>
-              <option value="lastMonth">Last Month</option>
-              <option value="custom">Custom Range...</option>
-            </select>
-          </div>
-
-          {/* Client Filter */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-ink/40 uppercase ml-1">Client / Customer</label>
-            <select
-              value={selectedClient}
-              onChange={(e) => setSelectedClient(e.target.value)}
-              className="w-full px-4 py-2.5 bg-paper border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand text-ink font-medium"
-            >
-              <option value="all">All Clients</option>
-              {uniqueClients.map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Invoice Ref Filter */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-ink/40 uppercase ml-1">Invoice Reference</label>
-            <div className="relative">
-              <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/30" />
-              <input 
-                type="text"
-                value={invoiceReferenceQuery}
-                onChange={(e) => setInvoiceReferenceQuery(e.target.value)}
-                placeholder="Filter by Invoice Ref..."
-                className="w-full pl-9 pr-4 py-2 bg-paper border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand text-ink font-medium"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Conditional Custom Date Range Pickers */}
-        {selectedDateFilter === 'custom' && (
-          <div className="pt-2 border-t border-black/5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-ink/40 uppercase ml-1">Start Date</label>
-              <input
-                type="date"
-                value={customStartDate}
-                onChange={(e) => setCustomStartDate(e.target.value)}
-                className="w-full px-4 py-2 bg-paper border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand text-ink font-medium"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-ink/40 uppercase ml-1">End Date</label>
-              <input
-                type="date"
-                value={customEndDate}
-                onChange={(e) => setCustomEndDate(e.target.value)}
-                className="w-full px-4 py-2 bg-paper border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand text-ink font-medium"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Active Filter Pills (Bonus Enhancement) */}
-        {hasActiveFilters && (
-          <div className="flex flex-wrap gap-2 pt-2 border-t border-black/5">
-            {selectedDateFilter !== 'all' && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/5 font-semibold text-brand rounded-full text-[10px] uppercase tracking-wide">
-                <span>Date: {getDateFilterLabel(selectedDateFilter, customStartDate, customEndDate)}</span>
-                <button onClick={() => setSelectedDateFilter('all')} className="hover:text-ink transition-colors font-bold text-xs leading-none">&times;</button>
-              </span>
-            )}
-            {selectedClient !== 'all' && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/5 font-semibold text-brand rounded-full text-[10px] uppercase tracking-wide">
-                <span>Client: {selectedClient}</span>
-                <button onClick={() => setSelectedClient('all')} className="hover:text-ink transition-colors font-bold text-xs leading-none">&times;</button>
-              </span>
-            )}
-            {invoiceReferenceQuery.trim() !== '' && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/5 font-semibold text-brand rounded-full text-[10px] uppercase tracking-wide">
-                <span>Ref: {invoiceReferenceQuery}</span>
-                <button onClick={() => setInvoiceReferenceQuery('')} className="hover:text-ink transition-colors font-bold text-xs leading-none">&times;</button>
-              </span>
-            )}
-            {search.trim() !== '' && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand/5 font-semibold text-brand rounded-full text-[10px] uppercase tracking-wide">
-                <span>Search: {search}</span>
-                <button onClick={() => setSearch('')} className="hover:text-ink transition-colors font-bold text-xs leading-none">&times;</button>
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Summary Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-10">
