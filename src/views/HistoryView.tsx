@@ -22,8 +22,39 @@ export function HistoryView() {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [activeMenuId, setActiveMenuId] = useState<number | null>(null);
 
   const isAdmin = profile?.role === 'admin';
+
+  useEffect(() => {
+    const handleDocumentClick = () => {
+      setActiveMenuId(null);
+    };
+    document.addEventListener('click', handleDocumentClick);
+    return () => {
+      document.removeEventListener('click', handleDocumentClick);
+    };
+  }, []);
+
+  const toggleMenu = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setActiveMenuId(prev => (prev === id ? null : id));
+  };
+
+  const handleUpdateStatus = async (id: number, status: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setActiveMenuId(null);
+    await updateStatus(id, status);
+  };
+
+  const handleDeleteInvoice = async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setActiveMenuId(null);
+    await deleteInvoice(id);
+  };
 
   useEffect(() => {
     async function fetchInvoices() {
@@ -154,7 +185,10 @@ export function HistoryView() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className={cn(
+                        "flex justify-end gap-2 transition-opacity",
+                        activeMenuId === inv.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                      )}>
                         <button 
                            onClick={() => setSelectedInvoice(inv)}
                            title="View Invoice"
@@ -176,14 +210,27 @@ export function HistoryView() {
                         >
                            <Printer className="w-4 h-4" />
                         </button>
-                        <div className="relative group/menu">
-                          <button className="p-1.5 text-ink/40 hover:text-ink hover:bg-paper rounded-lg transition-colors">
+                        <div className="relative">
+                          <button 
+                            onClick={(e) => toggleMenu(inv.id, e)}
+                            className={cn(
+                              "p-1.5 rounded-lg transition-colors",
+                              activeMenuId === inv.id 
+                                ? "text-brand bg-brand/10" 
+                                : "text-ink/40 hover:text-ink hover:bg-paper"
+                            )}
+                          >
                              <MoreHorizontal className="w-4 h-4" />
                           </button>
-                          <div className="absolute right-0 bottom-full mb-2 w-32 bg-white border border-black/5 rounded-xl shadow-xl z-30 overflow-hidden opacity-0 invisible group-hover/menu:visible group-hover/menu:opacity-100 transition-all border-black/5">
-                             <button onClick={() => updateStatus(inv.id, 'paid')} className="w-full text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-brand hover:bg-paper">Mark Paid</button>
-                             <button onClick={() => updateStatus(inv.id, 'unpaid')} className="w-full text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 hover:bg-paper">Mark Unpaid</button>
-                             <button onClick={() => deleteInvoice(inv.id)} className="w-full text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:bg-paper border-t border-black/5">Delete</button>
+                          <div 
+                            className={cn(
+                              "absolute right-0 bottom-full mb-2 w-32 bg-white border border-black/5 rounded-xl shadow-xl z-30 overflow-hidden transition-all",
+                              activeMenuId === inv.id ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
+                            )}
+                          >
+                             <button onClick={(e) => handleUpdateStatus(inv.id, 'paid', e)} className="w-full text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-brand hover:bg-paper">Mark Paid</button>
+                             <button onClick={(e) => handleUpdateStatus(inv.id, 'unpaid', e)} className="w-full text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-amber-600 hover:bg-paper">Mark Unpaid</button>
+                             <button onClick={(e) => handleDeleteInvoice(inv.id, e)} className="w-full text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:bg-paper border-t border-black/5">Delete</button>
                           </div>
                         </div>
                       </div>
@@ -238,14 +285,27 @@ export function HistoryView() {
                     >
                        <Smartphone className="w-5 h-5" />
                     </button>
-                    <div className="relative group/menu">
-                      <button className="p-2.5 bg-paper rounded-xl text-ink/40 transition-colors">
+                    <div className="relative">
+                      <button 
+                        onClick={(e) => toggleMenu(inv.id, e)}
+                        className={cn(
+                          "p-2.5 rounded-xl transition-colors",
+                          activeMenuId === inv.id 
+                            ? "text-brand bg-brand/10" 
+                            : "bg-paper text-ink/40 hover:text-ink"
+                        )}
+                      >
                          <MoreHorizontal className="w-5 h-5" />
                       </button>
-                      <div className="absolute right-0 bottom-full mb-2 w-32 bg-white border border-black/5 rounded-xl shadow-xl z-30 overflow-hidden opacity-0 invisible group-focus-within:visible group-focus-within:opacity-100 transition-all">
-                         <button onClick={() => updateStatus(inv.id, 'paid')} className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-brand hover:bg-paper">Mark Paid</button>
-                         <button onClick={() => updateStatus(inv.id, 'unpaid')} className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-amber-600 hover:bg-paper">Mark Unpaid</button>
-                         <button onClick={() => deleteInvoice(inv.id)} className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:bg-paper border-t border-black/5">Delete</button>
+                      <div 
+                        className={cn(
+                          "absolute right-0 bottom-full mb-2 w-32 bg-white border border-black/5 rounded-xl shadow-xl z-30 overflow-hidden transition-all",
+                          activeMenuId === inv.id ? "opacity-100 visible" : "opacity-0 invisible pointer-events-none"
+                        )}
+                      >
+                         <button onClick={(e) => handleUpdateStatus(inv.id, 'paid', e)} className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-brand hover:bg-paper">Mark Paid</button>
+                         <button onClick={(e) => handleUpdateStatus(inv.id, 'unpaid', e)} className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-amber-600 hover:bg-paper">Mark Unpaid</button>
+                         <button onClick={(e) => handleDeleteInvoice(inv.id, e)} className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-red-500 hover:bg-paper border-t border-black/5">Delete</button>
                       </div>
                     </div>
                   </div>
