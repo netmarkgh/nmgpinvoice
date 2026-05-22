@@ -5,6 +5,10 @@ import { formatCurrency, cn } from '../lib/utils';
 import { Search, LayoutGrid, List, BarChart3, Package, Filter, RotateCcw, Hash } from 'lucide-react';
 import { SalesAnalytics } from '../components/SalesAnalytics';
 import { InventoryIntelligence } from '../components/InventoryIntelligence';
+import { SalesDrillDown } from '../components/SalesDrillDown';
+import { getProductCategory } from '../lib/drillDownEngine';
+import { SmartGlobalSearch, HighlightText } from '../components/SmartGlobalSearch';
+import { generateSmartSearchEngine } from '../lib/searchEngine';
 
 export function parseLocalDate(dateStr: string): Date | null {
   if (!dateStr) return null;
@@ -138,6 +142,11 @@ export function ItemsSoldView() {
   const canUseAdvancedFilters = isAdmin || profile?.permissions?.includes('can_use_advanced_items_filters');
   const canAccessSalesAnalytics = isAdmin || profile?.permissions?.includes('can_access_sales_analytics');
   const canAccessInventoryIntelligence = isAdmin || profile?.permissions?.includes('can_access_inventory_intelligence');
+  const canUseSalesDrillDown = isAdmin || profile?.permissions?.includes('can_use_sales_drill_down');
+  const canUseSmartGlobalSearch = isAdmin || profile?.permissions?.includes('can_use_smart_global_search');
+
+  // Drilldown Modal Configuration
+  const [drillDownConfig, setDrillDownConfig] = useState<{ type: 'item' | 'client' | 'category'; targetValue: string } | null>(null);
 
   // Fallback activeSection based on available user permissions to prevent unauthorized or empty views
   useEffect(() => {
@@ -159,7 +168,7 @@ export function ItemsSoldView() {
   useEffect(() => {
     if (!canManageItems) return;
     async function fetchItems() {
-      let q = supabase.from('invoice_items').select('description, quantity, unit_price, amount, invoices(user_id, client_name, inv_number, inv_date, created_at, currency)');
+      let q = supabase.from('invoice_items').select('description, quantity, unit_price, amount, invoices(user_id, client_name, client_phone, inv_number, inv_date, created_at, currency, reference, status, pay_method, note)');
       if (!isAdmin) q = q.eq('invoices.user_id', user.id);
       
       const { data: rows, error } = await q;
@@ -200,15 +209,20 @@ export function ItemsSoldView() {
     }
 
     if (search.trim()) {
-      const q = search.toLowerCase().trim();
-      result = result.filter(r => 
-        r.description?.toLowerCase().includes(q) ||
-        r.invoices?.client_name?.toLowerCase().includes(q)
-      );
+      if (canUseSmartGlobalSearch) {
+        const engineResult = generateSmartSearchEngine(result, search, user.id);
+        result = engineResult.results;
+      } else {
+        const q = search.toLowerCase().trim();
+        result = result.filter(r => 
+          r.description?.toLowerCase().includes(q) ||
+          r.invoices?.client_name?.toLowerCase().includes(q)
+        );
+      }
     }
     
     return result;
-  }, [data, selectedDateFilter, customStartDate, customEndDate, selectedClient, invoiceReferenceQuery, search, canUseAdvancedFilters]);
+  }, [data, selectedDateFilter, customStartDate, customEndDate, selectedClient, invoiceReferenceQuery, search, canUseAdvancedFilters, canUseSmartGlobalSearch, user.id]);
 
   const totalQty = React.useMemo(() => {
     return filtered.reduce((s, r) => s + (r.quantity || 0), 0);
@@ -261,9 +275,27 @@ export function ItemsSoldView() {
       });
       
       return Object.values(grouped).sort((a: any, b: any) => b.amount - a.amount).map((g: any) => (
-        <div key={g.desc} className="bg-white border border-black/5 p-6 rounded-2xl flex items-center justify-between group hover:border-brand/40 transition-all shadow-sm">
+        <div 
+          key={g.desc} 
+          onClick={() => {
+            if (canUseSalesDrillDown) {
+              setDrillDownConfig({ type: 'item', targetValue: g.desc });
+            }
+          }}
+          className={cn(
+            "bg-white border border-black/5 p-6 rounded-2xl flex items-center justify-between group transition-all shadow-sm",
+            canUseSalesDrillDown ? "cursor-pointer hover:border-brand/40 hover:shadow-md" : ""
+          )}
+        >
           <div>
-            <div className="font-bold text-ink">{g.desc}</div>
+            <div className="font-bold text-ink flex items-center gap-2">
+              <HighlightText text={g.desc} highlight={search} />
+              {canUseSalesDrillDown && (
+                <span className="text-[9px] font-bold text-brand uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-brand/5 px-1.5 py-0.5 rounded ml-1">
+                  Inspect Drill-down ↗
+                </span>
+              )}
+            </div>
             <div className="text-[10px] text-ink/40 mt-1 uppercase tracking-tight flex items-center gap-2">
               <span className="text-brand font-bold">{g.invoiceCount} Sales</span> · {Array.from(g.clients).join(', ') || 'Unknown Client'}
             </div>
@@ -286,7 +318,24 @@ export function ItemsSoldView() {
       return Object.values(grouped).sort((a: any, b: any) => b.amount - a.amount).map((g: any) => (
         <div key={g.client} className="bg-white border border-black/5 p-6 rounded-2xl shadow-sm">
            <div className="flex justify-between items-center mb-6">
-             <div className="font-bold text-ink">{g.client}</div>
+             <div 
+               onClick={() => {
+                 if (canUseSalesDrillDown) {
+                   setDrillDownConfig({ type: 'client', targetValue: g.client });
+                 }
+               }}
+               className={cn(
+                 "font-bold text-ink group/h flex items-center gap-2",
+                 canUseSalesDrillDown ? "cursor-pointer hover:text-brand" : ""
+               )}
+             >
+               <HighlightText text={g.client} highlight={search} />
+               {canUseSalesDrillDown && (
+                 <span className="text-[9px] font-bold text-brand uppercase tracking-wider opacity-0 group-hover/h:opacity-100 transition-opacity bg-brand/5 px-1.5 py-0.5 rounded">
+                   Purchase Ledger ↗
+                 </span>
+               )}
+             </div>
              <div className="text-right">
                <div className="font-bold font-mono text-brand text-lg">{formatCurrency(g.amount, profile?.currency)}</div>
                <div className="text-[9px] text-ink/40 font-bold uppercase tracking-widest leading-none">{g.items.length} items</div>
@@ -304,8 +353,25 @@ export function ItemsSoldView() {
                 </thead>
                 <tbody className="divide-y divide-black/5">
                   {g.items.map((it: any, idx: number) => (
-                    <tr key={idx}>
-                      <td className="py-2.5 text-xs text-ink/70">{it.description}</td>
+                    <tr key={idx} className="group/row">
+                      <td 
+                        onClick={() => {
+                          if (canUseSalesDrillDown) {
+                            setDrillDownConfig({ type: 'item', targetValue: it.description });
+                          }
+                        }}
+                        className={cn(
+                          "py-2.5 text-xs",
+                          canUseSalesDrillDown ? "cursor-pointer hover:underline text-brand font-bold" : "text-ink/70"
+                        )}
+                      >
+                        <HighlightText text={it.description} highlight={search} />
+                        {canUseSalesDrillDown && (
+                          <span className="text-[8px] text-ink/30 font-semibold ml-2 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                            (Inspect item)
+                          </span>
+                        )}
+                      </td>
                       <td className="py-2.5 text-xs text-ink font-bold text-right">{it.quantity}</td>
                       <td className="py-2.5 text-xs text-brand font-mono font-bold text-right">{formatCurrency(it.amount, profile?.currency)}</td>
                       <td className="py-2.5 text-[10px] text-ink/30 font-mono text-right">{it.invoices?.inv_number || 'N/A'}</td>
@@ -368,16 +434,27 @@ export function ItemsSoldView() {
             </div>
           )}
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 sm:flex-none p-2 md:p-0">
-            <Search className="absolute left-5 md:left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/30" />
-            <input 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search items or clients..."
-              className="w-full sm:w-64 pl-10 pr-4 py-2 bg-white border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand"
-            />
-          </div>
+        <div className="flex flex-col sm:flex-row gap-3 items-center w-full lg:w-auto">
+          {canUseSmartGlobalSearch ? (
+            <div className="w-full sm:w-80 md:w-[420px] no-print">
+              <SmartGlobalSearch
+                value={search}
+                onChange={setSearch}
+                filteredRawData={data}
+                userId={user.id}
+              />
+            </div>
+          ) : (
+            <div className="relative flex-1 sm:flex-none p-2 md:p-0">
+              <Search className="absolute left-5 md:left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/30" />
+              <input 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search items or clients..."
+                className="w-full sm:w-64 pl-10 pr-4 py-2 bg-white border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand"
+              />
+            </div>
+          )}
           {activeSection === 'records' && (
             <div className="bg-white border border-black/5 p-1 rounded-xl flex gap-1 no-print">
                <button 
@@ -399,7 +476,33 @@ export function ItemsSoldView() {
         </div>
       </div>
 
-      {/* Advanced Filters Section */}
+      {canUseSmartGlobalSearch && search.trim() && (
+        <div className="mb-6 bg-brand/5 border border-brand/15 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-brand font-medium no-print">
+          <div className="flex flex-wrap items-center gap-2">
+            <span>Matches: <strong className="font-mono text-sm bg-brand/10 px-2.5 py-0.5 rounded-lg text-brand-dark font-extrabold">{filtered.length}</strong> items sold rows for query <strong className="underline font-bold">"{search}"</strong>.</span>
+            {(() => {
+              const engineStats = generateSmartSearchEngine(data, search, user.id);
+              if (engineStats.metadata.matchedFields.length > 0) {
+                return (
+                  <span className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-ink/40 font-bold ml-1">Matched dimensions:</span>
+                    {engineStats.metadata.matchedFields.map(f => (
+                      <span key={f} className="bg-brand/15 text-[10px] uppercase font-bold px-2 py-0.5 rounded-md tracking-wider text-brand">{f}</span>
+                    ))}
+                  </span>
+                );
+              }
+              return null;
+            })()}
+          </div>
+          <button
+            onClick={() => setSearch('')}
+            className="text-[10px] bg-brand text-white px-3.5 py-2 rounded-xl font-black uppercase tracking-wider hover:bg-brand/90 transition-all shadow-sm shrink-0 self-end sm:self-auto"
+          >
+            Clear Search
+          </button>
+        </div>
+      )}
       {canUseAdvancedFilters && (
         <div className="bg-white border border-black/5 p-4 md:p-6 rounded-2xl mb-6 space-y-4 shadow-sm no-print">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -527,7 +630,16 @@ export function ItemsSoldView() {
         loading ? (
           <div className="p-20 text-center animate-pulse text-ink/20 font-bold">Scanning records...</div>
         ) : (
-          <SalesAnalytics filteredData={filtered} currencySymbol={profile?.currency} />
+          <SalesAnalytics 
+            filteredData={filtered} 
+            currencySymbol={profile?.currency} 
+            searchQuery={search}
+            onInspect={(type, val) => {
+              if (canUseSalesDrillDown) {
+                setDrillDownConfig({ type, targetValue: val });
+              }
+            }}
+          />
         )
       ) : canAccessInventoryIntelligence && activeSection === 'inventory' ? (
         loading ? (
@@ -544,6 +656,11 @@ export function ItemsSoldView() {
               setActiveSection('records');
             }}
             currencySymbol={profile?.currency}
+            onInspectItem={(itemName) => {
+              if (canUseSalesDrillDown) {
+                setDrillDownConfig({ type: 'item', targetValue: itemName });
+              }
+            }}
           />
         )
       ) : (
@@ -585,6 +702,16 @@ export function ItemsSoldView() {
             ) : renderContent()}
           </div>
         </>
+      )}
+
+      {drillDownConfig && (
+        <SalesDrillDown 
+          filteredData={filtered} 
+          type={drillDownConfig.type} 
+          targetValue={drillDownConfig.targetValue} 
+          currencySymbol={profile?.currency}
+          onClose={() => setDrillDownConfig(null)}
+        />
       )}
     </div>
   );

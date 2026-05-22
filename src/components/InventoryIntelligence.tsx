@@ -30,6 +30,7 @@ interface InventoryIntelligenceProps {
   customEnd?: string;
   onSelectProductFilter?: (productName: string) => void;
   currencySymbol?: string;
+  onInspectItem?: (itemName: string) => void;
 }
 
 export function InventoryIntelligence({
@@ -39,7 +40,8 @@ export function InventoryIntelligence({
   customStart,
   customEnd,
   onSelectProductFilter,
-  currencySymbol = '$'
+  currencySymbol = '$',
+  onInspectItem
 }: InventoryIntelligenceProps) {
   const userId = userProfile?.id || 'default';
   const [editingItem, setEditingItem] = useState<string | null>(null);
@@ -320,7 +322,23 @@ export function InventoryIntelligence({
                     className="p-3 bg-red-50/40 border border-red-100 rounded-xl flex items-center justify-between"
                   >
                     <div>
-                      <span className="font-bold text-ink text-xs block">{item.description}</span>
+                      <span 
+                        onClick={() => {
+                          if (onInspectItem) onInspectItem(item.description);
+                        }}
+                        className={cn(
+                          "font-bold text-ink text-xs block",
+                          onInspectItem ? "cursor-pointer hover:underline hover:text-brand" : ""
+                        )}
+                        title={onInspectItem ? "Click to inspect transactional history" : ""}
+                      >
+                        {item.description}
+                        {onInspectItem && (
+                          <span className="text-[8px] font-bold text-brand ml-2 bg-brand/5 px-1 py-0.5 rounded">
+                            inspect ↗
+                          </span>
+                        )}
+                      </span>
                       <div className="text-[10px] text-ink/50 mt-1 flex items-center gap-3">
                         <span>Sold: <strong className="text-red-600">{item.sold}</strong></span>
                         <span>Stock Cover: <strong>{item.stock}</strong></span>
@@ -390,7 +408,23 @@ export function InventoryIntelligence({
                       )}
                     >
                       <div>
-                        <span className="font-bold text-ink text-xs block">{item.description}</span>
+                        <span 
+                          onClick={() => {
+                            if (onInspectItem) onInspectItem(item.description);
+                          }}
+                          className={cn(
+                            "font-bold text-ink text-xs block",
+                            onInspectItem ? "cursor-pointer hover:underline hover:text-brand" : ""
+                          )}
+                          title={onInspectItem ? "Click to inspect transactional history" : ""}
+                        >
+                          {item.description}
+                          {onInspectItem && (
+                            <span className="text-[8px] font-bold text-brand ml-2 bg-brand/5 px-1 py-0.5 rounded">
+                              inspect ↗
+                            </span>
+                          )}
+                        </span>
                         <span className="text-[10px] text-ink/40 mt-1 flex items-center gap-2">
                           Remaining Stock: 
                           <strong className={cn("font-mono font-bold", isCritical ? "text-red-600" : "text-orange-600")}>
@@ -619,6 +653,15 @@ export function InventoryIntelligence({
                               +30 Stock
                             </button>
                           )}
+                          {onInspectItem && (
+                            <button
+                              onClick={() => onInspectItem(item.description)}
+                              className="p-1 px-1.5 hover:bg-paper rounded text-[10px] font-bold text-brand hover:text-brand-dark uppercase transition-colors"
+                              title="Deep inspect sales"
+                            >
+                              Inspect
+                            </button>
+                          )}
                           <button
                             onClick={() => {
                               if (onSelectProductFilter) onSelectProductFilter(item.description);
@@ -684,7 +727,16 @@ export function InventoryIntelligence({
                 >
                   <div className="space-y-3">
                     <div className="flex justify-between items-start gap-2">
-                      <span className="text-xs font-bold text-ink block truncate max-w-[150px]" title={rec.description}>
+                      <span 
+                        onClick={() => {
+                          if (onInspectItem) onInspectItem(rec.description);
+                        }}
+                        className={cn(
+                          "text-xs font-bold text-ink block truncate max-w-[130px]",
+                          onInspectItem ? "cursor-pointer hover:underline hover:text-brand" : ""
+                        )}
+                        title={onInspectItem ? `${rec.description} (inspect transactional history)` : rec.description}
+                      >
                         {rec.description}
                       </span>
                       <span className={cn("px-2 py-0.5 rounded text-[8px] font-bold uppercase leading-none", statusClass)}>

@@ -24,12 +24,16 @@ import {
   RevenueTrendPoint 
 } from '../lib/analyticsEngine';
 
+import { HighlightText } from './SmartGlobalSearch';
+
 interface SalesAnalyticsProps {
   filteredData: any[];
   currencySymbol?: string;
+  onInspect?: (type: 'item' | 'client' | 'category', targetValue: string) => void;
+  searchQuery?: string;
 }
 
-export function SalesAnalytics({ filteredData, currencySymbol }: SalesAnalyticsProps) {
+export function SalesAnalytics({ filteredData, currencySymbol, onInspect, searchQuery = '' }: SalesAnalyticsProps) {
   // Common stats derived
   const totalItemsCount = filteredData.length;
   
@@ -568,15 +572,26 @@ export function SalesAnalytics({ filteredData, currencySymbol }: SalesAnalyticsP
                   return (
                     <div 
                       key={item.item} 
-                      className="group p-3 rounded-xl hover:bg-black/[0.01] border border-transparent hover:border-black/5 transition-all"
+                      onClick={() => {
+                        if (onInspect) onInspect('item', item.item);
+                      }}
+                      className={cn(
+                        "group p-3 rounded-xl border border-transparent transition-all",
+                        onInspect ? "cursor-pointer hover:border-brand/10 hover:bg-brand/[0.01]" : "hover:bg-black/[0.01] hover:border-black/5"
+                      )}
                     >
                       <div className="flex items-start justify-between gap-4 mb-1.5">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <span className="w-6 h-6 rounded-lg bg-paper shrink-0 flex items-center justify-center font-black text-xs text-ink/40">
                             {rankIcon || (idx + 1)}
                           </span>
-                          <div className="font-bold text-sm text-ink truncate group-hover:text-brand transition-colors">
-                            {item.item}
+                          <div className="font-bold text-sm text-ink truncate group-hover:text-brand transition-colors flex items-center gap-1">
+                            <HighlightText text={item.item} highlight={searchQuery} />
+                            {onInspect && (
+                              <span className="text-[8px] text-brand/60 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                (inspect)
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="text-right shrink-0">
@@ -658,12 +673,23 @@ export function SalesAnalytics({ filteredData, currencySymbol }: SalesAnalyticsP
                   return (
                     <div 
                       key={item.item} 
-                      className="group p-3 rounded-xl hover:bg-black/[0.01] border border-transparent hover:border-black/5 transition-all"
+                      onClick={() => {
+                        if (onInspect) onInspect('item', item.item);
+                      }}
+                      className={cn(
+                        "group p-3 rounded-xl border border-transparent transition-all",
+                        onInspect ? "cursor-pointer hover:border-brand/10 hover:bg-brand/[0.01]" : "hover:bg-black/[0.01] hover:border-black/5"
+                      )}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <div className="font-bold text-sm text-ink truncate group-hover:text-brand transition-colors flex items-center gap-2">
-                            <span>{item.item}</span>
+                            <span><HighlightText text={item.item} highlight={searchQuery} /></span>
+                            {onInspect && (
+                              <span className="text-[8px] text-brand/60 font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                (inspect)
+                              </span>
+                            )}
                           </div>
                           <div className="mt-1 flex items-center gap-2">
                             <span className={cn("text-[9px] font-black uppercase tracking-wide px-2 py-0.5 rounded border", badgeColorClass)}>
@@ -727,12 +753,18 @@ export function SalesAnalytics({ filteredData, currencySymbol }: SalesAnalyticsP
               return (
                 <div 
                   key={cat.category} 
-                  className="p-5 bg-paper rounded-2xl border border-black/[0.03] hover:border-brand/20 hover:bg-brand/[0.01] transition-all flex flex-col justify-between"
+                  onClick={() => {
+                    if (onInspect) onInspect('category', cat.category);
+                  }}
+                  className={cn(
+                    "p-5 bg-paper rounded-2xl border border-black/[0.03] transition-all flex flex-col justify-between group/cat",
+                    onInspect ? "cursor-pointer hover:border-brand/40 hover:bg-brand/[0.01] hover:shadow-md" : ""
+                  )}
                 >
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold text-sm text-ink group-hover:text-brand transition-colors block">
-                        {cat.category}
+                      <span className="font-bold text-sm text-ink group-hover/cat:text-brand transition-colors block">
+                        <HighlightText text={cat.category} highlight={searchQuery} /> {onInspect && <span className="text-[9px] text-brand/60 font-medium ml-1">(inspect)</span>}
                       </span>
                       <span className="text-[10px] text-ink/30 font-mono tracking-wider uppercase font-bold">MATCH #{idx+1}</span>
                     </div>
