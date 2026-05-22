@@ -474,7 +474,8 @@ export function AdminView() {
                         'can_access_revenue_reports',
                         'can_manage_items',
                         'can_use_advanced_items_filters',
-                        'can_customize_branding'
+                        'can_customize_branding',
+                        'can_access_sales_analytics'
                       ].map(perm => (
                         <label key={perm} className="flex items-center gap-3 p-3 bg-paper rounded-xl cursor-pointer hover:bg-black/5 transition-colors">
                           <input 

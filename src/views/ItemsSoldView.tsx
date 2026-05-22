@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, cn } from '../lib/utils';
 import { Search, LayoutGrid, List, BarChart3, Package, Filter, RotateCcw, Hash } from 'lucide-react';
+import { SalesAnalytics } from '../components/SalesAnalytics';
 
 export function parseLocalDate(dateStr: string): Date | null {
   if (!dateStr) return null;
@@ -129,10 +130,19 @@ export function ItemsSoldView() {
   const [customEndDate, setCustomEndDate] = useState('');
   const [selectedClient, setSelectedClient] = useState('all');
   const [invoiceReferenceQuery, setInvoiceReferenceQuery] = useState('');
+  const [activeSection, setActiveSection] = useState<'analytics' | 'records'>('analytics');
 
   const isAdmin = profile?.role === 'admin';
   const canManageItems = isAdmin || profile?.permissions?.includes('can_manage_items');
   const canUseAdvancedFilters = isAdmin || profile?.permissions?.includes('can_use_advanced_items_filters');
+  const canAccessSalesAnalytics = isAdmin || profile?.permissions?.includes('can_access_sales_analytics');
+
+  // Fallback activeSection to 'records' if sales analytics is disabled for the user
+  useEffect(() => {
+    if (!canAccessSalesAnalytics && activeSection !== 'records') {
+      setActiveSection('records');
+    }
+  }, [canAccessSalesAnalytics, activeSection]);
 
   useEffect(() => {
     if (!canManageItems) return;
@@ -318,10 +328,27 @@ export function ItemsSoldView() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-ink">Items Sold</h1>
           <p className="text-ink/40 text-sm mt-1">Inventory tracking and sales performance</p>
+          
+          {canAccessSalesAnalytics && (
+            <div className="bg-paper p-0.5 rounded-xl border border-black/5 flex text-xs font-bold uppercase mt-4 w-fit no-print">
+              <button 
+                onClick={() => setActiveSection('analytics')}
+                className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'analytics' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
+              >
+                <BarChart3 className="w-3.5 h-3.5" /> Analytics Dashboard
+              </button>
+              <button 
+                onClick={() => setActiveSection('records')}
+                className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'records' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
+              >
+                <List className="w-3.5 h-3.5" /> Detailed Ledger
+              </button>
+            </div>
+          )}
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 sm:flex-none">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/30" />
+          <div className="relative flex-1 sm:flex-none p-2 md:p-0">
+            <Search className="absolute left-5 md:left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/30" />
             <input 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -329,22 +356,24 @@ export function ItemsSoldView() {
               className="w-full sm:w-64 pl-10 pr-4 py-2 bg-white border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand"
             />
           </div>
-          <div className="bg-white border border-black/5 p-1 rounded-xl flex gap-1">
-             <button 
-              onClick={() => setGroupBy('item')}
-              className={cn("flex-1 sm:flex-none p-1.5 rounded-lg transition-all flex items-center justify-center", groupBy === 'item' ? "bg-brand text-white shadow-sm" : "hover:bg-paper text-ink/40")}
-             >
-               <Package className="w-4 h-4" />
-               <span className="sm:hidden ml-2 text-xs font-bold uppercase tracking-wider">By Item</span>
-             </button>
-             <button 
-              onClick={() => setGroupBy('client')}
-              className={cn("flex-1 sm:flex-none p-1.5 rounded-lg transition-all flex items-center justify-center", groupBy === 'client' ? "bg-brand text-white shadow-sm" : "hover:bg-paper text-ink/40")}
-             >
-               <BarChart3 className="w-4 h-4" />
-               <span className="sm:hidden ml-2 text-xs font-bold uppercase tracking-wider">By Client</span>
-             </button>
-          </div>
+          {(activeSection === 'records' || !canAccessSalesAnalytics) && (
+            <div className="bg-white border border-black/5 p-1 rounded-xl flex gap-1 no-print">
+               <button 
+                onClick={() => setGroupBy('item')}
+                className={cn("flex-1 sm:flex-none p-1.5 rounded-lg transition-all flex items-center justify-center", groupBy === 'item' ? "bg-brand text-white shadow-sm" : "hover:bg-paper text-ink/40")}
+               >
+                 <Package className="w-4 h-4" />
+                 <span className="sm:hidden ml-2 text-xs font-bold uppercase tracking-wider">By Item</span>
+               </button>
+               <button 
+                onClick={() => setGroupBy('client')}
+                className={cn("flex-1 sm:flex-none p-1.5 rounded-lg transition-all flex items-center justify-center", groupBy === 'client' ? "bg-brand text-white shadow-sm" : "hover:bg-paper text-ink/40")}
+               >
+                 <BarChart3 className="w-4 h-4" />
+                 <span className="sm:hidden ml-2 text-xs font-bold uppercase tracking-wider">By Client</span>
+               </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -472,42 +501,52 @@ export function ItemsSoldView() {
         </div>
       )}
 
-      {/* Summary Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-10">
-        <div className="bg-white border border-black/5 p-6 rounded-2xl shadow-sm">
-           <div className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">Total Lines</div>
-           <div className="text-2xl font-bold text-ink">{filtered.length}</div>
-        </div>
-        <div className="bg-white border border-black/5 p-6 rounded-2xl shadow-sm">
-           <div className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">Total Qty</div>
-           <div className="text-2xl font-bold text-brand">{totalQty}</div>
-        </div>
-        <div className="bg-white border border-black/5 p-6 rounded-2xl shadow-sm sm:col-span-2 md:col-span-1">
-           <div className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">Total Value</div>
-           <div className="text-2xl font-bold font-mono text-brand">{formatCurrency(totalVal, profile?.currency)}</div>
-        </div>
-      </div>
-
-      {/* Main List / Content */}
-      <div className="grid gap-4">
-        {loading ? (
+      {canAccessSalesAnalytics && activeSection === 'analytics' ? (
+        loading ? (
           <div className="p-20 text-center animate-pulse text-ink/20 font-bold">Scanning records...</div>
-        ) : filtered.length === 0 ? (
-          <div className="bg-white border border-dashed border-black/10 p-16 md:p-20 rounded-2xl text-center space-y-4">
-             <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
-               <Package className="w-6 h-6" />
-             </div>
-             <h3 className="font-bold text-ink text-base">No matching sales found</h3>
-             <p className="text-sm text-ink/40 max-w-xs mx-auto">Try adjusting your filters, searching for something else, or resetting all search conditions.</p>
-             <button
-               onClick={handleResetFilters}
-               className="mt-2 px-4 py-2 bg-brand text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-all shadow-sm"
-             >
-               Reset All Filters
-             </button>
+        ) : (
+          <SalesAnalytics filteredData={filtered} currencySymbol={profile?.currency} />
+        )
+      ) : (
+        <>
+          {/* Summary Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-10">
+            <div className="bg-white border border-black/5 p-6 rounded-2xl shadow-sm">
+               <div className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">Total Lines</div>
+               <div className="text-2xl font-bold text-ink">{filtered.length}</div>
+            </div>
+            <div className="bg-white border border-black/5 p-6 rounded-2xl shadow-sm">
+               <div className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">Total Qty</div>
+               <div className="text-2xl font-bold text-brand">{totalQty}</div>
+            </div>
+            <div className="bg-white border border-black/5 p-6 rounded-2xl shadow-sm sm:col-span-2 md:col-span-1">
+               <div className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">Total Value</div>
+               <div className="text-2xl font-bold font-mono text-brand">{formatCurrency(totalVal, profile?.currency)}</div>
+            </div>
           </div>
-        ) : renderContent()}
-      </div>
+
+          {/* Main List / Content */}
+          <div className="grid gap-4">
+            {loading ? (
+              <div className="p-20 text-center animate-pulse text-ink/20 font-bold">Scanning records...</div>
+            ) : filtered.length === 0 ? (
+              <div className="bg-white border border-dashed border-black/10 p-16 md:p-20 rounded-2xl text-center space-y-4">
+                 <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
+                   <Package className="w-6 h-6" />
+                 </div>
+                 <h3 className="font-bold text-ink text-base">No matching sales found</h3>
+                 <p className="text-sm text-ink/40 max-w-xs mx-auto">Try adjusting your filters, searching for something else, or resetting all search conditions.</p>
+                 <button
+                   onClick={handleResetFilters}
+                   className="mt-2 px-4 py-2 bg-brand text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-all shadow-sm"
+                 >
+                   Reset All Filters
+                 </button>
+              </div>
+            ) : renderContent()}
+          </div>
+        </>
+      )}
     </div>
   );
 }
