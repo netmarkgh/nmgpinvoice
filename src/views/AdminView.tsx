@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Profile } from '../types';
 import { formatCurrency, cn, getInitials } from '../lib/utils';
 import { motion } from 'motion/react';
-import { isUXEnhancedEnabled, toggleUXEnhanced } from '../lib/visualEngine';
+import { isUXEnhancedEnabled, toggleUXEnhanced, isAIInsightsEnabled, toggleAIInsights, isMobileQuickActionsEnabled, toggleMobileQuickActions } from '../lib/visualEngine';
 import { 
   Users, 
   CheckCircle, 
@@ -22,7 +22,9 @@ import {
   Building2,
   Tag,
   Settings,
-  X
+  X,
+  Sparkles,
+  Smartphone
 } from 'lucide-react';
 
 export function AdminView() {
@@ -30,11 +32,25 @@ export function AdminView() {
   const [members, setMembers] = useState<Profile[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [uxEnabled, setUxEnabled] = useState(isUXEnhancedEnabled());
+  const [aiEnabled, setAiEnabled] = useState(isAIInsightsEnabled());
+  const [mobileQuickEnabled, setMobileQuickEnabled] = useState(isMobileQuickActionsEnabled());
 
   const handleToggleUX = () => {
     const nextVal = !uxEnabled;
     setUxEnabled(nextVal);
     toggleUXEnhanced(nextVal);
+  };
+
+  const handleToggleAI = () => {
+    const nextVal = !aiEnabled;
+    setAiEnabled(nextVal);
+    toggleAIInsights(nextVal);
+  };
+
+  const handleToggleMobileQuick = () => {
+    const nextVal = !mobileQuickEnabled;
+    setMobileQuickEnabled(nextVal);
+    toggleMobileQuickActions(nextVal);
   };
   const [loading, setLoading] = useState(true);
   
@@ -171,8 +187,8 @@ export function AdminView() {
       </div>
 
       {/* Global Dashboard Visual Configurations Center */}
-      <div className="bg-gradient-to-r from-brand/[0.02] to-indigo-50/10 border border-brand/20 p-6 md:p-8 rounded-3xl shadow-sm mb-10">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-brand/[0.02] to-indigo-50/10 border border-brand/20 p-6 md:p-8 rounded-3xl shadow-sm mb-10 space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-brand/10">
           <div className="flex items-start gap-4">
             <div className="p-3 bg-brand/10 text-brand rounded-2xl shrink-0">
               <Settings className="w-6 h-6 animate-spin-slow" />
@@ -202,6 +218,78 @@ export function AdminView() {
                 className={cn(
                   "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
                   uxEnabled ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-indigo-100 text-indigo-600 rounded-2xl shrink-0">
+              <Sparkles className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-ink text-base tracking-tight">AI-Driven Smart Insights Engine</h3>
+              <p className="text-xs text-ink/40 mt-1 max-w-xl leading-relaxed">
+                Toggle the executive business intelligence, smart search forecasting anomalies, customer concentration analysis, and synthetic voice narration.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-[10px] font-black uppercase text-ink/50 tracking-wider">
+              {aiEnabled ? 'AI Engine Active' : 'AI Engine Stopped'}
+            </span>
+            <button
+              onClick={handleToggleAI}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2",
+                aiEnabled ? "bg-brand" : "bg-black/15"
+              )}
+              role="switch"
+              aria-checked={aiEnabled}
+            >
+              <span
+                className={cn(
+                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                  aiEnabled ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-6 border-t border-brand/10">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl shrink-0">
+              <Smartphone className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-ink text-base tracking-tight">Mobile-Friendly Quick Actions Layer</h3>
+              <p className="text-xs text-ink/40 mt-1 max-w-xl leading-relaxed">
+                Activate the sticky bottom bar, fast transaction creator, quick restock controller, bottom sheet interactive filter pane, alerts badges, and collapsible headers.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-[10px] font-black uppercase text-ink/50 tracking-wider">
+              {mobileQuickEnabled ? 'Quick Bar Active' : 'Quick Bar Inactive'}
+            </span>
+            <button
+              onClick={handleToggleMobileQuick}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2",
+                mobileQuickEnabled ? "bg-brand" : "bg-black/15"
+              )}
+              role="switch"
+              aria-checked={mobileQuickEnabled}
+            >
+              <span
+                className={cn(
+                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                  mobileQuickEnabled ? "translate-x-5" : "translate-x-0"
                 )}
               />
             </button>

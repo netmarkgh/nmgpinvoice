@@ -2,15 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, cn } from '../lib/utils';
-import { Search, LayoutGrid, List, BarChart3, Package, Filter, RotateCcw, Hash, Info, FileText, ChevronRight, DollarSign } from 'lucide-react';
+import { Search, LayoutGrid, List, BarChart3, Package, Filter, RotateCcw, Hash, Info, FileText, ChevronRight, DollarSign, Sparkles } from 'lucide-react';
 import { SalesAnalytics } from '../components/SalesAnalytics';
 import { InventoryIntelligence } from '../components/InventoryIntelligence';
 import { SalesDrillDown } from '../components/SalesDrillDown';
 import { getProductCategory } from '../lib/drillDownEngine';
 import { SmartGlobalSearch, HighlightText } from '../components/SmartGlobalSearch';
 import { generateSmartSearchEngine } from '../lib/searchEngine';
-import { isUXEnhancedEnabled } from '../lib/visualEngine';
+import { isUXEnhancedEnabled, isAIInsightsEnabled, isMobileQuickActionsEnabled } from '../lib/visualEngine';
 import { getDaysObserved, generateInventoryIntelligence } from '../lib/inventoryEngine';
+import { SmartAIInsightsView } from '../components/SmartAIInsightsView';
+import { MobileQuickActionsContainer } from '../components/MobileQuickActionsContainer';
 import { 
   StatusBadge, 
   InteractiveTooltip, 
@@ -145,7 +147,25 @@ export function ItemsSoldView() {
   const [customEndDate, setCustomEndDate] = useState('');
   const [selectedClient, setSelectedClient] = useState('all');
   const [invoiceReferenceQuery, setInvoiceReferenceQuery] = useState('');
-  const [activeSection, setActiveSection] = useState<'analytics' | 'records' | 'inventory'>('analytics');
+  const [activeSection, setActiveSection] = useState<'analytics' | 'records' | 'inventory' | 'intelligence'>('analytics');
+  const [aiInsightsEnabled, setAiInsightsEnabled] = useState(isAIInsightsEnabled());
+  const [mobileQuickActionsEnabled, setMobileQuickActionsEnabled] = useState(isMobileQuickActionsEnabled());
+
+  useEffect(() => {
+    const handleToggle = () => {
+      setAiInsightsEnabled(isAIInsightsEnabled());
+    };
+    window.addEventListener('ai_insights_toggled', handleToggle);
+    return () => window.removeEventListener('ai_insights_toggled', handleToggle);
+  }, []);
+
+  useEffect(() => {
+    const handleToggle = () => {
+      setMobileQuickActionsEnabled(isMobileQuickActionsEnabled());
+    };
+    window.addEventListener('mobile_quick_actions_toggled', handleToggle);
+    return () => window.removeEventListener('mobile_quick_actions_toggled', handleToggle);
+  }, []);
 
   const isAdmin = profile?.role === 'admin';
   const canManageItems = isAdmin || profile?.permissions?.includes('can_manage_items');
@@ -175,24 +195,28 @@ export function ItemsSoldView() {
     }
   }, [canAccessSalesAnalytics, canAccessInventoryIntelligence, activeSection]);
 
-  useEffect(() => {
+  const fetchItems = async () => {
     if (!canManageItems) return;
-    async function fetchItems() {
-      const relationSelect = !isAdmin ? 'invoices!inner' : 'invoices';
-      let q = supabase.from('invoice_items').select(`description, quantity, unit_price, amount, ${relationSelect}(user_id, client_name, client_phone, inv_number, inv_date, created_at, currency, reference, status, pay_method, note)`);
-      if (!isAdmin) q = q.eq('invoices.user_id', user.id);
-      
-      const { data: rows, error } = await q;
-      if (error) return;
-      
-      // Filter out mismatches from join
-      const formatted = (rows || []).map((r: any) => ({
-        ...r,
-        invoices: Array.isArray(r.invoices) ? r.invoices[0] : r.invoices
-      }));
-      setData(formatted.filter(r => r.invoices && (isAdmin || r.invoices.user_id === user?.id)));
+    setLoading(true);
+    const relationSelect = !isAdmin ? 'invoices!inner' : 'invoices';
+    let q = supabase.from('invoice_items').select(`description, quantity, unit_price, amount, ${relationSelect}(user_id, client_name, client_phone, inv_number, inv_date, created_at, currency, reference, status, pay_method, note)`);
+    if (!isAdmin) q = q.eq('invoices.user_id', user.id);
+    
+    const { data: rows, error } = await q;
+    if (error) {
       setLoading(false);
+      return;
     }
+    
+    const formatted = (rows || []).map((r: any) => ({
+      ...r,
+      invoices: Array.isArray(r.invoices) ? r.invoices[0] : r.invoices
+    }));
+    setData(formatted.filter(r => r.invoices && (isAdmin || r.invoices.user_id === user?.id)));
+    setLoading(false);
+  };
+
+  useEffect(() => {
     fetchItems();
   }, [user.id, isAdmin, canManageItems]);
 
@@ -263,6 +287,16 @@ export function ItemsSoldView() {
   const inventoryIntelligence = React.useMemo(() => {
     return generateInventoryIntelligence(filtered, user?.id, daysObserved, isAdmin);
   }, [filtered, user?.id, daysObserved, isAdmin]);
+
+  const allRawInvoices = React.useMemo(() => {
+    const map = new Map();
+    data.forEach(item => {
+      if (item.invoices && item.invoices.inv_number) {
+        map.set(item.invoices.inv_number, item.invoices);
+      }
+    });
+    return Array.from(map.values());
+  }, [data]);
 
   const sparklineData = React.useMemo(() => {
     if (filtered.length === 0) return [0, 0, 0, 0, 0];
@@ -498,11 +532,22 @@ export function ItemsSoldView() {
             <p className="text-ink/40 text-sm mt-1">Inventory tracking and sales performance</p>
             
             {(canAccessSalesAnalytics || canAccessInventoryIntelligence) && (
-              <div className="bg-paper p-0.5 rounded-xl border border-black/5 flex text-xs font-bold uppercase mt-4 w-fit no-print">
+              <div className="bg-paper p-0.5 rounded-xl border border-black/5 flex flex-wrap text-xs font-bold uppercase mt-4 w-fit no-print gap-1">
+                {aiInsightsEnabled && (
+                  <button 
+                    onClick={() => setActiveSection('intelligence')}
+                    className={cn(
+                      "px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer", 
+                      activeSection === 'intelligence' ? "bg-indigo-650 text-white shadow-sm bg-indigo-650" : "text-indigo-600 hover:text-indigo-800"
+                    )}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 animate-pulse text-indigo-505" /> AI Intelligence
+                  </button>
+                )}
                 {canAccessSalesAnalytics && (
                   <button 
                     onClick={() => setActiveSection('analytics')}
-                    className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'analytics' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
+                    className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer", activeSection === 'analytics' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
                   >
                     <BarChart3 className="w-3.5 h-3.5" /> Analytics Dashboard
                   </button>
@@ -510,14 +555,14 @@ export function ItemsSoldView() {
                 {canAccessInventoryIntelligence && (
                   <button 
                     onClick={() => setActiveSection('inventory')}
-                    className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'inventory' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
+                    className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer", activeSection === 'inventory' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
                   >
                     <Package className="w-3.5 h-3.5" /> Inventory Intelligence
                   </button>
                 )}
                 <button 
                   onClick={() => setActiveSection('records')}
-                  className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'records' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
+                  className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer", activeSection === 'records' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
                 >
                   <List className="w-3.5 h-3.5" /> Detailed Ledger
                 </button>
@@ -736,7 +781,27 @@ export function ItemsSoldView() {
         </div>
       )}
 
-      {canAccessSalesAnalytics && activeSection === 'analytics' ? (
+      {aiInsightsEnabled && activeSection === 'intelligence' ? (
+        loading ? (
+          <div className="p-20 text-center animate-pulse text-indigo-500/20 font-bold">Summoning Smart CoPilot...</div>
+        ) : (
+          <SmartAIInsightsView
+            filteredData={filtered}
+            userId={user ? user.id : 'global'}
+            daysObserved={getDaysObserved(selectedDateFilter, customStartDate, customEndDate)}
+            isAdmin={isAdmin}
+            inventoryIntelligence={inventoryIntelligence}
+            onDrilldownAction={(type, val) => {
+              if (canUseSalesDrillDown) {
+                setDrillDownConfig({ type, targetValue: val });
+              }
+            }}
+            onNavigateSection={(sec) => {
+              setActiveSection(sec);
+            }}
+          />
+        )
+      ) : canAccessSalesAnalytics && activeSection === 'analytics' ? (
         loading ? (
           <div className="p-20 text-center animate-pulse text-ink/20 font-bold">Scanning records...</div>
         ) : (
@@ -859,6 +924,65 @@ export function ItemsSoldView() {
           targetValue={drillDownConfig.targetValue} 
           currencySymbol={profile?.currency}
           onClose={() => setDrillDownConfig(null)}
+        />
+      )}
+
+      {mobileQuickActionsEnabled && (
+        <MobileQuickActionsContainer
+          filteredData={filtered}
+          allRawInvoices={allRawInvoices}
+          userId={user.id}
+          inventoryIntelligence={inventoryIntelligence}
+          onInvoiceAdded={() => {
+            fetchItems();
+          }}
+          onStockUpdated={() => {
+            fetchItems();
+          }}
+          onApplyFilters={(config) => {
+            if (config.dateFilter !== undefined) setSelectedDateFilter(config.dateFilter);
+            if (config.clientId !== undefined) setSelectedClient(config.clientId);
+            if (config.searchQuery !== undefined) setSearch(config.searchQuery);
+          }}
+          onDrillDown={(type, value) => {
+            if (canUseSalesDrillDown) {
+              setDrillDownConfig({ type, targetValue: value });
+            }
+          }}
+          onExportAction={(format) => {
+            if (format === 'csv') {
+              const headers = ["Invoice Ref", "Client Name", "Item Description", "Quantity", "Price", "Amount", "Date", "Status"];
+              const rows = filtered.map(r => [
+                r.invoices?.inv_number || '',
+                r.invoices?.client_name || '',
+                r.description || '',
+                r.quantity || '',
+                r.unit_price || '',
+                r.amount || '',
+                r.invoices?.inv_date || '',
+                r.invoices?.status || ''
+              ]);
+              const content = [headers, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+              const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.setAttribute("href", url);
+              link.setAttribute("download", `Invoice_Dashboard_Summary_${new Date().toISOString().split('T')[0]}.csv`);
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            } else {
+              window.print();
+            }
+          }}
+          onRefreshAll={async () => {
+            await fetchItems();
+          }}
+          currentFilters={{
+            dateFilter: selectedDateFilter,
+            client: selectedClient,
+            searchQuery: search
+          }}
         />
       )}
     </div>

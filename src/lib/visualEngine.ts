@@ -393,6 +393,56 @@ export function toggleUXEnhanced(enabled: boolean) {
 }
 
 /**
+ * Checks if the AI-Driven Smart Insights Engine is enabled.
+ * Fetches preference from localStorage, defaulting to true to enable the intelligence layer immediately.
+ */
+export function isAIInsightsEnabled(): boolean {
+  try {
+    const val = localStorage.getItem('global_ai_insights_enabled');
+    return val !== 'false';
+  } catch (e) {
+    return true;
+  }
+}
+
+/**
+ * Sets the website's AI-Driven Smart Insights Engine status.
+ */
+export function toggleAIInsights(enabled: boolean) {
+  try {
+    localStorage.setItem('global_ai_insights_enabled', String(enabled));
+    window.dispatchEvent(new Event('ai_insights_toggled'));
+  } catch (e) {
+    console.error('Error holding AI Insights preference key', e);
+  }
+}
+
+/**
+ * Checks if the Mobile-Friendly Quick Actions Layer is enabled.
+ * Fetches preference from localStorage, defaulting to true to enable the quick actions layer immediately.
+ */
+export function isMobileQuickActionsEnabled(): boolean {
+  try {
+    const val = localStorage.getItem('global_mobile_quick_actions_enabled');
+    return val !== 'false';
+  } catch (e) {
+    return true;
+  }
+}
+
+/**
+ * Sets the website's Mobile-Friendly Quick Actions Layer status.
+ */
+export function toggleMobileQuickActions(enabled: boolean) {
+  try {
+    localStorage.setItem('global_mobile_quick_actions_enabled', String(enabled));
+    window.dispatchEvent(new Event('mobile_quick_actions_toggled'));
+  } catch (e) {
+    console.error('Error holding Mobile Quick Actions preference key', e);
+  }
+}
+
+/**
  * FEATURE 13 - CENTRALIZED PIPELINE
  * Translates a collection of active invoices into dashboard summary stats.
  */
