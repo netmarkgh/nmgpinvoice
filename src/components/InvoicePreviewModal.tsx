@@ -2,8 +2,10 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Printer, Smartphone, Download } from 'lucide-react';
 import { Invoice, InvoiceItem } from '../types';
-import { formatCurrency, getInitials } from '../lib/utils';
+import { formatCurrency, getInitials, prepareElementForPDF } from '../lib/utils';
 import { supabase } from '../lib/supabase';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
 
 interface InvoicePreviewModalProps {
   invoice: Invoice | null;
@@ -31,9 +33,39 @@ export function InvoicePreviewModal({ invoice, onClose }: InvoicePreviewModalPro
 
   const handleShareWA = () => {
     if (!invoice) return;
+
     const phone = (invoice.client_phone || '').replace(/\D/g, '');
     const msg = `Hello ${invoice.client_name},\n\nFind your invoice from *${invoice.biz_name}*:\n\n*Invoice:* ${invoice.inv_number}\n*Amount:* ${formatCurrency(invoice.total, invoice.currency)}\n*Due date:* ${invoice.due_date}\n\n*Payment via:* ${invoice.pay_method} — ${invoice.acc_number}\n\n— ${invoice.biz_name}`;
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+
+    // Trigger WhatsApp link instantly to prevent popup blockers on all devices (mobile, tablet, PC)
+    const isMobileOrTablet = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobileOrTablet) {
+      window.location.href = url;
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+
+    // Auto-generate invoice PDF for attachment ready state with fixed dimensions
+    const element = document.getElementById('printable-invoice');
+    if (element) {
+      const clone = prepareElementForPDF(element);
+      const opt = {
+        margin:       0.2,
+        filename:     `Invoice_${invoice.inv_number || 'Draft'}.pdf`,
+        image:        { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' as const }
+      };
+      try {
+        html2pdf().set(opt).from(clone).save()
+          .then(() => clone.remove())
+          .catch(() => clone.remove());
+      } catch (e) {
+        console.error("Error generating PDF:", e);
+        clone.remove();
+      }
+    }
   };
 
   return (

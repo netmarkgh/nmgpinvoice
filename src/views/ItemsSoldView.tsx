@@ -168,7 +168,8 @@ export function ItemsSoldView() {
   useEffect(() => {
     if (!canManageItems) return;
     async function fetchItems() {
-      let q = supabase.from('invoice_items').select('description, quantity, unit_price, amount, invoices(user_id, client_name, client_phone, inv_number, inv_date, created_at, currency, reference, status, pay_method, note)');
+      const relationSelect = !isAdmin ? 'invoices!inner' : 'invoices';
+      let q = supabase.from('invoice_items').select(`description, quantity, unit_price, amount, ${relationSelect}(user_id, client_name, client_phone, inv_number, inv_date, created_at, currency, reference, status, pay_method, note)`);
       if (!isAdmin) q = q.eq('invoices.user_id', user.id);
       
       const { data: rows, error } = await q;

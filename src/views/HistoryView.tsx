@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Invoice } from '../types';
-import { formatCurrency, cn } from '../lib/utils';
+import { formatCurrency, cn, prepareElementForPDF } from '../lib/utils';
 import { 
   Search, 
   Filter, 
@@ -14,6 +14,8 @@ import {
   Eye
 } from 'lucide-react';
 import { InvoicePreviewModal } from '../components/InvoicePreviewModal';
+// @ts-ignore
+import html2pdf from 'html2pdf.js';
 
 export function HistoryView() {
   const { profile, user } = useAuth();
@@ -93,7 +95,41 @@ export function HistoryView() {
   const handleShareWA = (inv: Invoice) => {
     const phone = (inv.client_phone || '').replace(/\D/g, '');
     const msg = `Hello ${inv.client_name},\n\nReminder from *${inv.biz_name}*:\n\n*Invoice:* ${inv.inv_number}\n*Amount due:* ${formatCurrency(inv.total, inv.currency)}\n*Due date:* ${inv.due_date}\n\n*Payment via:* ${inv.pay_method} — ${inv.acc_number}\n\n— ${inv.biz_name}`;
-    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+
+    // Trigger WhatsApp link instantly to prevent popup blockers on all devices (mobile, tablet, PC)
+    const isMobileOrTablet = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobileOrTablet) {
+      window.location.href = url;
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+
+    // Open the preview modal so that 'printable-invoice' DOM element is rendered and download the PDF
+    setSelectedInvoice(inv);
+
+    // Wait slightly for React view lifecycle to mount and render the printable-invoice DOM element
+    setTimeout(() => {
+      const element = document.getElementById('printable-invoice');
+      if (element) {
+        const clone = prepareElementForPDF(element);
+        const opt = {
+          margin:       0.2,
+          filename:     `Invoice_${inv.inv_number || 'Draft'}.pdf`,
+          image:        { type: 'jpeg' as const, quality: 0.98 },
+          html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+          jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' as const }
+        };
+        try {
+          html2pdf().set(opt).from(clone).save()
+            .then(() => clone.remove())
+            .catch(() => clone.remove());
+        } catch (e) {
+          console.error("Error generating PDF:", e);
+          clone.remove();
+        }
+      }
+    }, 300);
   };
 
   return (

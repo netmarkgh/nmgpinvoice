@@ -136,7 +136,8 @@ export function getDaysObserved(
 export function generateInventoryIntelligence(
   filteredData: any[],
   userId: string,
-  daysObserved: number
+  daysObserved: number,
+  isAdmin: boolean = false
 ): InventoryIntelligenceResult {
   const stocks = getStoredStocks(userId);
 
@@ -153,8 +154,21 @@ export function generateInventoryIntelligence(
   const oversoldItems: { description: string; sold: number; stock: number; oversoldBy: number }[] = [];
   const restockRecommendations: any[] = [];
 
-  // Use unique descriptions in either database stocks or active filters
-  const allDescriptions = Array.from(new Set([...Object.keys(stocks), ...Object.keys(salesByItem)]));
+  // Custom adjusted stock keys from localStorage
+  let customAdjustmentKeys: string[] = [];
+  try {
+    const rawData = localStorage.getItem(`inv_stock_v1_${userId}`);
+    if (rawData) {
+      customAdjustmentKeys = Object.keys(JSON.parse(rawData));
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  // Limit non-admin descriptions to only what they actually sold OR customized
+  const allDescriptions = isAdmin
+    ? Array.from(new Set([...Object.keys(stocks), ...Object.keys(salesByItem)]))
+    : Array.from(new Set([...customAdjustmentKeys, ...Object.keys(salesByItem)]));
 
   let criticalCount = 0;
   let lowCount = 0;

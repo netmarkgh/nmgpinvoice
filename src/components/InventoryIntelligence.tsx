@@ -59,9 +59,10 @@ export function InventoryIntelligence({
 
   // Run the Master Inventory Engine
   const intelligence = useMemo(() => {
-    return generateInventoryIntelligence(filteredData, userId, daysObserved);
+    const isAdmin = userProfile?.role === 'admin';
+    return generateInventoryIntelligence(filteredData, userId, daysObserved, isAdmin);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredData, userId, daysObserved, refreshTrigger]);
+  }, [filteredData, userId, daysObserved, refreshTrigger, userProfile?.role]);
 
   // Filter items in the inventory table based on search & tab
   const displayedItems = useMemo(() => {
