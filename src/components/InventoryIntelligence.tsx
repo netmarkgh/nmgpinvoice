@@ -12,11 +12,13 @@ import {
   X, 
   Search,
   ChevronRight,
-  TrendingDown
+  TrendingDown,
+  Trash2
 } from 'lucide-react';
 import { 
   generateInventoryIntelligence, 
   saveStoredStock, 
+  deleteStoredStock,
   getDaysObserved, 
   ProductInventory 
 } from '../lib/inventoryEngine';
@@ -104,6 +106,13 @@ export function InventoryIntelligence({
     const optimalStock = Math.max(currentStock + quantityToIncrease, currentSold + 20);
     saveStoredStock(userId, description, optimalStock);
     setRefreshTrigger(p => p + 1);
+  };
+  
+  const handleDeleteStock = (description: string) => {
+    if (window.confirm(`Are you sure you want to delete/remove the stock tracking for "${description}"?`)) {
+      deleteStoredStock(userId, description);
+      setRefreshTrigger(p => p + 1);
+    }
   };
 
   // Exports currently displayed inventory list as CSV
@@ -670,6 +679,14 @@ export function InventoryIntelligence({
                             className="p-1 px-1.5 hover:bg-paper rounded text-[10px] font-bold text-ink/50 hover:text-brand uppercase transition-colors"
                           >
                             Filter
+                          </button>
+                          <button
+                            onClick={() => handleDeleteStock(item.description)}
+                            className="p-1 px-1.5 hover:bg-red-50 text-red-600 hover:text-red-700 rounded text-[10px] font-bold uppercase transition-colors flex items-center gap-1"
+                            title="Delete Stock Item"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete
                           </button>
                         </div>
                       </td>

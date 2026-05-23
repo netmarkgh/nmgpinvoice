@@ -49,20 +49,44 @@ export const DEFAULT_INITIAL_STOCKS: Record<string, number> = {
 };
 
 /**
- * Gets the configured starting stock for items.
- * Merges defaults and user custom stock adjustments from localStorage.
+ * Gets the list of deleted stock item descriptions.
  */
-export function getStoredStocks(userId: string): Record<string, number> {
-  const key = `inv_stock_v1_${userId}`;
+export function getDeletedStocks(userId: string): string[] {
+  const key = `inv_deleted_v1_${userId}`;
   try {
     const data = localStorage.getItem(key);
     if (data) {
-      return { ...DEFAULT_INITIAL_STOCKS, ...JSON.parse(data) };
+      return JSON.parse(data);
+    }
+  } catch (e) {
+    console.error('Error loading deleted stocks', e);
+  }
+  return [];
+}
+
+/**
+ * Gets the configured starting stock for items.
+ * Merges defaults and user custom stock adjustments from localStorage, omitting deleted ones.
+ */
+export function getStoredStocks(userId: string): Record<string, number> {
+  const key = `inv_stock_v1_${userId}`;
+  const deleted = getDeletedStocks(userId);
+  let base = { ...DEFAULT_INITIAL_STOCKS };
+  try {
+    const data = localStorage.getItem(key);
+    if (data) {
+      base = { ...base, ...JSON.parse(data) };
     }
   } catch (e) {
     console.error('Error loading inventory stocks', e);
   }
-  return { ...DEFAULT_INITIAL_STOCKS };
+
+  // Filter out any marked as deleted
+  deleted.forEach(item => {
+    delete base[item];
+  });
+
+  return base;
 }
 
 /**
@@ -74,8 +98,46 @@ export function saveStoredStock(userId: string, description: string, value: numb
     const current = getStoredStocks(userId);
     current[description] = value;
     localStorage.setItem(key, JSON.stringify(current));
+
+    // Remove from deleted blacklist if it was there
+    const delKey = `inv_deleted_v1_${userId}`;
+    const deleted = getDeletedStocks(userId);
+    if (deleted.includes(description)) {
+      const updated = deleted.filter(item => item !== description);
+      localStorage.setItem(delKey, JSON.stringify(updated));
+    }
   } catch (e) {
     console.error('Error saving stock adjustment', e);
+  }
+}
+
+/**
+ * Deletes / removes a stock item from display blacklist.
+ */
+export function deleteStoredStock(userId: string, description: string) {
+  // Remove from custom adjustments if present
+  const key = `inv_stock_v1_${userId}`;
+  try {
+    const data = localStorage.getItem(key);
+    if (data) {
+      const parsed = JSON.parse(data);
+      delete parsed[description];
+      localStorage.setItem(key, JSON.stringify(parsed));
+    }
+  } catch (e) {
+    console.error('Error removing stock from custom records', e);
+  }
+
+  // Add configuration to deleted blacklist
+  const delKey = `inv_deleted_v1_${userId}`;
+  try {
+    const deleted = getDeletedStocks(userId);
+    if (!deleted.includes(description)) {
+      deleted.push(description);
+      localStorage.setItem(delKey, JSON.stringify(deleted));
+    }
+  } catch (e) {
+    console.error('Error blacklisting deleted stock helper', e);
   }
 }
 
@@ -165,10 +227,13 @@ export function generateInventoryIntelligence(
     console.error(e);
   }
 
+  const deleted = getDeletedStocks(userId);
+
   // Limit non-admin descriptions to only what they actually sold OR customized
-  const allDescriptions = isAdmin
+  const allDescriptions = (isAdmin
     ? Array.from(new Set([...Object.keys(stocks), ...Object.keys(salesByItem)]))
-    : Array.from(new Set([...customAdjustmentKeys, ...Object.keys(salesByItem)]));
+    : Array.from(new Set([...customAdjustmentKeys, ...Object.keys(salesByItem)]))
+  ).filter(desc => !deleted.includes(desc));
 
   let criticalCount = 0;
   let lowCount = 0;
