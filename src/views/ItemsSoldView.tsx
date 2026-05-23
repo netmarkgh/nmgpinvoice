@@ -538,10 +538,10 @@ export function ItemsSoldView() {
                     onClick={() => setActiveSection('intelligence')}
                     className={cn(
                       "px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer", 
-                      activeSection === 'intelligence' ? "bg-indigo-650 text-white shadow-sm bg-indigo-650" : "text-indigo-600 hover:text-indigo-800"
+                      activeSection === 'intelligence' ? "bg-indigo-600 text-white shadow-sm" : "text-indigo-600 hover:text-indigo-800"
                     )}
                   >
-                    <Sparkles className="w-3.5 h-3.5 animate-pulse text-indigo-505" /> AI Intelligence
+                    <Sparkles className="w-3.5 h-3.5 animate-pulse text-indigo-500" /> AI Intelligence
                   </button>
                 )}
                 {canAccessSalesAnalytics && (

@@ -20,7 +20,7 @@ import {
 import { generateSmartInsights, SmartInsight, InsightCategory, InsightSeverity } from '../lib/aiInsightEngine';
 import { getProductCategory } from '../lib/drillDownEngine';
 import { formatCurrency, cn } from '../lib/utils';
-import { isUXEnhancedEnabled } from '../lib/visualEngine';
+import { isUXEnhancedEnabled, isMobileQuickActionsEnabled } from '../lib/visualEngine';
 
 interface SmartAIInsightsViewProps {
   filteredData: any[];
@@ -43,7 +43,6 @@ export function SmartAIInsightsView({
 }: SmartAIInsightsViewProps) {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [speaking, setSpeaking] = useState(false);
-  const [chatOpen, setChatOpen] = useState(true);
   const [chatQuery, setChatQuery] = useState('');
   const [chatHistory, setChatHistory] = useState<Array<{ sender: 'user' | 'assistant'; text: string; date: Date }>>([
     {
@@ -230,8 +229,10 @@ I am ready to help you plan stock levels, analyze client accounts, or construct 
     }
   };
 
+  const mobileQuickActions = isMobileQuickActionsEnabled();
+
   return (
-    <div className="space-y-8" id="sxk8mo">
+    <div className={cn("space-y-8", mobileQuickActions ? "pb-36 md:pb-44" : "pb-10")} id="sxk8mo">
       {/* Header section with executive Summary Head */}
       <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-slate-950 text-white p-6 md:p-8 rounded-3xl shadow-xl relative overflow-hidden border border-white/5">
         <div className="absolute top-0 right-0 p-8 opacity-5">
@@ -431,7 +432,7 @@ I am ready to help you plan stock levels, analyze client accounts, or construct 
 
       {/* INTERACTIVE CHAT BOT ASSISTANT BAR OR EMBEDDED AREA */}
       <div className="bg-slate-50 border border-black/5 rounded-3xl p-6 md:p-8 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-black/[0.03] pb-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-brand/10 text-brand rounded-2xl">
               <Bot className="w-6 h-6" />
@@ -441,92 +442,83 @@ I am ready to help you plan stock levels, analyze client accounts, or construct 
               <p className="text-xs text-ink/40">Ask real-time analytical questions about products, clients, or revenues.</p>
             </div>
           </div>
-
-          <button
-            onClick={() => setChatOpen(!chatOpen)}
-            className="px-4 py-2 bg-brand text-white text-xs font-bold uppercase rounded-xl shadow-sm hover:opacity-95 cursor-pointer transition-all"
-          >
-            {chatOpen ? 'Hide Dialog' : 'Ask AI Copilot'}
-          </button>
         </div>
 
-        {chatOpen && (
-          <div className="bg-white border border-black/5 rounded-2xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-3 duration-200">
-            {/* Conversations flow */}
-            <div className="p-5 h-72 overflow-y-auto space-y-4 bg-slate-50/50">
-              {chatHistory.map((item, idx) => {
-                const isBot = item.sender === 'assistant';
-                return (
-                  <div key={idx} className={cn("flex gap-3 max-w-[85%] items-start", isBot ? "mr-auto" : "ml-auto flex-row-reverse")}>
-                    <div className={cn("p-2 rounded-xl text-white", isBot ? "bg-slate-800" : "bg-brand")}>
-                      {isBot ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
-                    </div>
-                    <div className={cn("p-4 rounded-2xl text-xs leading-relaxed shadow-sm font-medium", isBot ? "bg-white border border-black/5 text-[#222222]" : "bg-brand/10 border border-brand/15 text-brand")}>
-                      {/* Very simple markdown parsing for bullet lists and headings */}
-                      {item.text.split('\n').map((line, lIdx) => {
-                        if (line.startsWith('###')) {
-                          return <h4 key={lIdx} className="font-black text-ink text-sm mt-2 mb-1 uppercase tracking-tight">{line.replace('###', '')}</h4>;
-                        }
-                        if (line.startsWith('- ')) {
-                          return <li key={lIdx} className="ml-4 list-disc">{line.replace('- ', '')}</li>;
-                        }
-                        if (line.startsWith('1. ') || line.startsWith('2. ') || line.startsWith('3. ')) {
-                          return <p key={lIdx} className="ml-2 font-semibold text-slate-800 mt-1">{line}</p>;
-                        }
-                        return <p key={lIdx} className="mb-1 leading-relaxed">{line}</p>;
-                      })}
-                      <span className="block text-[8px] opacity-40 text-right mt-2 uppercase font-bold">
-                        {item.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
+        <div className="bg-white border border-black/5 rounded-2xl flex flex-col overflow-hidden animate-in fade-in duration-200">
+          {/* Conversations flow */}
+          <div className="p-5 h-72 overflow-y-auto space-y-4 bg-slate-50/50">
+            {chatHistory.map((item, idx) => {
+              const isBot = item.sender === 'assistant';
+              return (
+                <div key={idx} className={cn("flex gap-3 max-w-[85%] items-start", isBot ? "mr-auto" : "ml-auto flex-row-reverse")}>
+                  <div className={cn("p-2 rounded-xl text-white", isBot ? "bg-slate-800" : "bg-brand")}>
+                    {isBot ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
                   </div>
-                );
-              })}
-              {chatLoading && (
-                <div className="flex gap-3 items-center text-xs text-ink/40 animate-pulse font-bold p-2 ml-4">
-                  <Bot className="w-4 h-4 text-brand animate-spin" /> Thinking and analyzing transaction lists...
+                  <div className={cn("p-4 rounded-2xl text-xs leading-relaxed shadow-sm font-medium", isBot ? "bg-white border border-black/5 text-[#222222]" : "bg-brand/10 border border-brand/15 text-brand")}>
+                    {/* Very simple markdown parsing for bullet lists and headings */}
+                    {item.text.split('\n').map((line, lIdx) => {
+                      if (line.startsWith('###')) {
+                        return <h4 key={lIdx} className="font-black text-ink text-sm mt-2 mb-1 uppercase tracking-tight">{line.replace('###', '')}</h4>;
+                      }
+                      if (line.startsWith('- ')) {
+                        return <li key={lIdx} className="ml-4 list-disc">{line.replace('- ', '')}</li>;
+                      }
+                      if (line.startsWith('1. ') || line.startsWith('2. ') || line.startsWith('3. ')) {
+                        return <p key={lIdx} className="ml-2 font-semibold text-slate-800 mt-1">{line}</p>;
+                      }
+                      return <p key={lIdx} className="mb-1 leading-relaxed">{line}</p>;
+                    })}
+                    <span className="block text-[8px] opacity-40 text-right mt-2 uppercase font-bold">
+                      {item.date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
                 </div>
-              )}
-            </div>
-
-            {/* Quick Suggestions list */}
-            <div className="p-4 bg-slate-50 border-t border-b border-black/5 flex flex-wrap gap-2">
-              {[
-                "Why are sales dropping?",
-                "Which category should we prioritize?",
-                "Give restock plan",
-                "Review client portfolio performance"
-              ].map((pill, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleChatSubmit(undefined, pill)}
-                  disabled={chatLoading}
-                  className="px-3 py-1 bg-white hover:bg-brand/5 hover:border-brand/40 border border-black/10 rounded-full text-[11px] font-bold text-slate-700 transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {pill}
-                </button>
-              ))}
-            </div>
-
-            {/* Submit layout */}
-            <form onSubmit={handleChatSubmit} className="p-4 flex gap-3 bg-white">
-              <input
-                value={chatQuery}
-                onChange={e => setChatQuery(e.target.value)}
-                placeholder="Ask your assistant (e.g., 'What is our top product?')..."
-                className="flex-1 px-4 py-2.5 bg-slate-50 border border-black/5 rounded-xl text-xs focus:outline-none focus:border-brand focus:bg-white"
-                disabled={chatLoading}
-              />
-              <button
-                type="submit"
-                disabled={chatLoading || !chatQuery.trim()}
-                className="p-3 bg-brand text-white rounded-xl shadow-sm hover:opacity-95 disabled:opacity-50 cursor-pointer transition-all"
-              >
-                <Send className="w-4 h-4" />
-              </button>
-            </form>
+              );
+            })}
+            {chatLoading && (
+              <div className="flex gap-3 items-center text-xs text-ink/40 animate-pulse font-bold p-2 ml-4">
+                <Bot className="w-4 h-4 text-brand animate-spin" /> Thinking and analyzing transaction lists...
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Quick Suggestions list */}
+          <div className="p-4 bg-slate-50 border-t border-b border-black/5 flex flex-wrap gap-2">
+            {[
+              "Why are sales dropping?",
+              "Which category should we prioritize?",
+              "Give restock plan",
+              "Review client portfolio performance"
+            ].map((pill, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleChatSubmit(undefined, pill)}
+                disabled={chatLoading}
+                className="px-3 py-1 bg-white hover:bg-brand/5 hover:border-brand/40 border border-black/10 rounded-full text-[11px] font-bold text-slate-700 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {pill}
+              </button>
+            ))}
+          </div>
+
+          {/* Submit layout */}
+          <form onSubmit={handleChatSubmit} className="p-4 flex gap-3 bg-white">
+            <input
+              value={chatQuery}
+              onChange={e => setChatQuery(e.target.value)}
+              placeholder="Ask your assistant (e.g., 'What is our top product?')..."
+              className="flex-1 px-4 py-2.5 bg-slate-50 border border-black/5 rounded-xl text-xs focus:outline-none focus:border-brand focus:bg-white"
+              disabled={chatLoading}
+            />
+            <button
+              type="submit"
+              disabled={chatLoading || !chatQuery.trim()}
+              className="p-3 bg-brand text-white rounded-xl shadow-sm hover:opacity-95 disabled:opacity-50 cursor-pointer transition-all"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
