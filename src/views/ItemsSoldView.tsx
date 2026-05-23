@@ -2,13 +2,23 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, cn } from '../lib/utils';
-import { Search, LayoutGrid, List, BarChart3, Package, Filter, RotateCcw, Hash } from 'lucide-react';
+import { Search, LayoutGrid, List, BarChart3, Package, Filter, RotateCcw, Hash, Info, FileText, ChevronRight, DollarSign } from 'lucide-react';
 import { SalesAnalytics } from '../components/SalesAnalytics';
 import { InventoryIntelligence } from '../components/InventoryIntelligence';
 import { SalesDrillDown } from '../components/SalesDrillDown';
 import { getProductCategory } from '../lib/drillDownEngine';
 import { SmartGlobalSearch, HighlightText } from '../components/SmartGlobalSearch';
 import { generateSmartSearchEngine } from '../lib/searchEngine';
+import { isUXEnhancedEnabled } from '../lib/visualEngine';
+import { getDaysObserved, generateInventoryIntelligence } from '../lib/inventoryEngine';
+import { 
+  StatusBadge, 
+  InteractiveTooltip, 
+  PolishedKPICard, 
+  DecorativeProgressBar, 
+  EmptyStateView, 
+  QuickVisualSummaryStrip 
+} from '../components/VisualUXHelpers';
 
 export function parseLocalDate(dateStr: string): Date | null {
   if (!dateStr) return null;
@@ -244,6 +254,68 @@ export function ItemsSoldView() {
 
   const hasActiveFilters = selectedDateFilter !== 'all' || selectedClient !== 'all' || invoiceReferenceQuery.trim() !== '' || search.trim() !== '';
 
+  const isEnhanced = isUXEnhancedEnabled();
+
+  const daysObserved = React.useMemo(() => {
+    return getDaysObserved(filtered, selectedDateFilter, customStartDate, customEndDate);
+  }, [filtered, selectedDateFilter, customStartDate, customEndDate]);
+
+  const inventoryIntelligence = React.useMemo(() => {
+    return generateInventoryIntelligence(filtered, user?.id, daysObserved, isAdmin);
+  }, [filtered, user?.id, daysObserved, isAdmin]);
+
+  const sparklineData = React.useMemo(() => {
+    if (filtered.length === 0) return [0, 0, 0, 0, 0];
+    const sorted = [...filtered].sort((a,b) => {
+      const da = new Date(a.invoices?.inv_date || a.invoices?.created_at || 0).getTime();
+      const db = new Date(b.invoices?.inv_date || b.invoices?.created_at || 0).getTime();
+      return da - db;
+    });
+    const chunkSize = Math.max(1, Math.ceil(sorted.length / 5));
+    const chunks = [];
+    for (let i = 0; i < sorted.length; i += chunkSize) {
+      const chunk = sorted.slice(i, i + chunkSize);
+      const sum = chunk.reduce((s, r) => s + (r.amount || 0), 0);
+      chunks.push(sum);
+    }
+    while (chunks.length < 5) chunks.push(0);
+    return chunks;
+  }, [filtered]);
+
+  const topCategoryAndStats = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    filtered.forEach(item => {
+      const cat = getProductCategory(item.description || '');
+      counts[cat] = (counts[cat] || 0) + (item.amount || 0);
+    });
+    let topCat = '';
+    let maxAmt = 0;
+    Object.entries(counts).forEach(([cat, val]) => {
+      if (val > maxAmt) {
+        maxAmt = val;
+        topCat = cat;
+      }
+    });
+    return { topCat, topCatAmount: maxAmt };
+  }, [filtered]);
+
+  const fastSellersCount = React.useMemo(() => {
+    const itemUnits: Record<string, number> = {};
+    filtered.forEach(r => {
+      const d = r.description?.trim();
+      if (d) itemUnits[d] = (itemUnits[d] || 0) + (r.quantity || 0);
+    });
+    return Object.values(itemUnits).filter(qty => qty >= 25).length;
+  }, [filtered]);
+
+  const lowStockCount = React.useMemo(() => {
+    return (inventoryIntelligence?.urgencySummary?.lowCount || 0) + (inventoryIntelligence?.urgencySummary?.criticalCount || 0);
+  }, [inventoryIntelligence]);
+
+  const oversoldCount = React.useMemo(() => {
+    return inventoryIntelligence?.urgencySummary?.oversoldCount || 0;
+  }, [inventoryIntelligence]);
+
   const getDateFilterLabel = (filterType: string, start?: string, end?: string) => {
     switch (filterType) {
       case 'today': return 'Today';
@@ -288,15 +360,23 @@ export function ItemsSoldView() {
             canUseSalesDrillDown ? "cursor-pointer hover:border-brand/40 hover:shadow-md" : ""
           )}
         >
-          <div>
+          <div className="space-y-1 bg-transparent">
             <div className="font-bold text-ink flex items-center gap-2">
               <HighlightText text={g.desc} highlight={search} />
-              {canUseSalesDrillDown && (
+              {isEnhanced && g.qty >= 25 && (
+                <StatusBadge type="FAST_SELLER" />
+              )}
+              {canUseSalesDrillDown && !isEnhanced && (
                 <span className="text-[9px] font-bold text-brand uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap bg-brand/5 px-1.5 py-0.5 rounded ml-1">
                   Inspect Drill-down ↗
                 </span>
               )}
             </div>
+            {isEnhanced && (
+              <div className="w-48">
+                <DecorativeProgressBar current={g.qty} max={250} title="Sales Velocity" subLabel={String(g.qty)} />
+              </div>
+            )}
             <div className="text-[10px] text-ink/40 mt-1 uppercase tracking-tight flex items-center gap-2">
               <span className="text-brand font-bold">{g.invoiceCount} Sales</span> · {Array.from(g.clients).join(', ') || 'Unknown Client'}
             </div>
@@ -331,7 +411,10 @@ export function ItemsSoldView() {
                )}
              >
                <HighlightText text={g.client} highlight={search} />
-               {canUseSalesDrillDown && (
+               {isEnhanced && g.amount >= 1000 && (
+                 <StatusBadge type="TOP_CLIENT" />
+               )}
+               {canUseSalesDrillDown && !isEnhanced && (
                  <span className="text-[9px] font-bold text-brand uppercase tracking-wider opacity-0 group-hover/h:opacity-100 transition-opacity bg-brand/5 px-1.5 py-0.5 rounded">
                    Purchase Ledger ↗
                  </span>
@@ -362,16 +445,21 @@ export function ItemsSoldView() {
                           }
                         }}
                         className={cn(
-                          "py-2.5 text-xs",
+                          "py-2.5 text-xs text-left",
                           canUseSalesDrillDown ? "cursor-pointer hover:underline text-brand font-bold" : "text-ink/70"
                         )}
                       >
-                        <HighlightText text={it.description} highlight={search} />
-                        {canUseSalesDrillDown && (
-                          <span className="text-[8px] text-ink/30 font-semibold ml-2 opacity-0 group-hover/row:opacity-100 transition-opacity">
-                            (Inspect item)
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <HighlightText text={it.description} highlight={search} />
+                          {isEnhanced && it.invoices?.status && (
+                            <StatusBadge type={it.invoices.status} />
+                          )}
+                          {canUseSalesDrillDown && !isEnhanced && (
+                            <span className="text-[8px] text-ink/30 font-semibold ml-2 opacity-0 group-hover/row:opacity-100 transition-opacity">
+                              (Inspect item)
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-2.5 text-xs text-ink font-bold text-right">{it.quantity}</td>
                       <td className="py-2.5 text-xs text-brand font-mono font-bold text-right">{formatCurrency(it.amount, profile?.currency)}</td>
@@ -402,80 +490,101 @@ export function ItemsSoldView() {
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
-      {/* Header section */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-ink">Items Sold</h1>
-          <p className="text-ink/40 text-sm mt-1">Inventory tracking and sales performance</p>
-          
-          {(canAccessSalesAnalytics || canAccessInventoryIntelligence) && (
-            <div className="bg-paper p-0.5 rounded-xl border border-black/5 flex text-xs font-bold uppercase mt-4 w-fit no-print">
-              {canAccessSalesAnalytics && (
+      {/* FEATURE 10 - STICKY ACTION BAR */}
+      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-black/5 -mx-4 md:-mx-8 px-4 md:px-8 py-4 mb-8 shadow-sm no-print flex flex-col gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-ink">Items Sold</h1>
+            <p className="text-ink/40 text-sm mt-1">Inventory tracking and sales performance</p>
+            
+            {(canAccessSalesAnalytics || canAccessInventoryIntelligence) && (
+              <div className="bg-paper p-0.5 rounded-xl border border-black/5 flex text-xs font-bold uppercase mt-4 w-fit no-print">
+                {canAccessSalesAnalytics && (
+                  <button 
+                    onClick={() => setActiveSection('analytics')}
+                    className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'analytics' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
+                  >
+                    <BarChart3 className="w-3.5 h-3.5" /> Analytics Dashboard
+                  </button>
+                )}
+                {canAccessInventoryIntelligence && (
+                  <button 
+                    onClick={() => setActiveSection('inventory')}
+                    className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'inventory' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
+                  >
+                    <Package className="w-3.5 h-3.5" /> Inventory Intelligence
+                  </button>
+                )}
                 <button 
-                  onClick={() => setActiveSection('analytics')}
-                  className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'analytics' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
+                  onClick={() => setActiveSection('records')}
+                  className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'records' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
                 >
-                  <BarChart3 className="w-3.5 h-3.5" /> Analytics Dashboard
+                  <List className="w-3.5 h-3.5" /> Detailed Ledger
                 </button>
-              )}
-              {canAccessInventoryIntelligence && (
-                <button 
-                  onClick={() => setActiveSection('inventory')}
-                  className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'inventory' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
-                >
-                  <Package className="w-3.5 h-3.5" /> Inventory Intelligence
-                </button>
-              )}
-              <button 
-                onClick={() => setActiveSection('records')}
-                className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5", activeSection === 'records' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
-              >
-                <List className="w-3.5 h-3.5" /> Detailed Ledger
-              </button>
-            </div>
-          )}
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3 items-center w-full lg:w-auto">
-          {canUseSmartGlobalSearch ? (
-            <div className="w-full sm:w-80 md:w-[420px] no-print">
-              <SmartGlobalSearch
-                value={search}
-                onChange={setSearch}
-                filteredRawData={data}
-                userId={user.id}
-              />
-            </div>
-          ) : (
-            <div className="relative flex-1 sm:flex-none p-2 md:p-0">
-              <Search className="absolute left-5 md:left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/30" />
-              <input 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search items or clients..."
-                className="w-full sm:w-64 pl-10 pr-4 py-2 bg-white border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand"
-              />
-            </div>
-          )}
-          {activeSection === 'records' && (
-            <div className="bg-white border border-black/5 p-1 rounded-xl flex gap-1 no-print">
-               <button 
-                onClick={() => setGroupBy('item')}
-                className={cn("flex-1 sm:flex-none p-1.5 rounded-lg transition-all flex items-center justify-center", groupBy === 'item' ? "bg-brand text-white shadow-sm" : "hover:bg-paper text-ink/40")}
-               >
-                 <Package className="w-4 h-4" />
-                 <span className="sm:hidden ml-2 text-xs font-bold uppercase tracking-wider">By Item</span>
-               </button>
-               <button 
-                onClick={() => setGroupBy('client')}
-                className={cn("flex-1 sm:flex-none p-1.5 rounded-lg transition-all flex items-center justify-center", groupBy === 'client' ? "bg-brand text-white shadow-sm" : "hover:bg-paper text-ink/40")}
-               >
-                 <BarChart3 className="w-4 h-4" />
-                 <span className="sm:hidden ml-2 text-xs font-bold uppercase tracking-wider">By Client</span>
-               </button>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 items-center w-full lg:w-auto">
+            {canUseSmartGlobalSearch ? (
+              <div className="w-full sm:w-80 md:w-[420px] no-print">
+                <SmartGlobalSearch
+                  value={search}
+                  onChange={setSearch}
+                  filteredRawData={data}
+                  userId={user.id}
+                />
+              </div>
+            ) : (
+              <div className="relative flex-1 sm:flex-none p-2 md:p-0 no-print">
+                <Search className="absolute left-5 md:left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink/30" />
+                <input 
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search items or clients..."
+                  className="w-full sm:w-64 pl-10 pr-4 py-2 bg-white border border-black/5 rounded-xl text-sm focus:outline-none focus:border-brand"
+                />
+              </div>
+            )}
+            {activeSection === 'records' && (
+              <div className="bg-white border border-black/5 p-1 rounded-xl flex gap-1 no-print">
+                 <button 
+                  onClick={() => setGroupBy('item')}
+                  className={cn("flex-1 sm:flex-none p-1.5 rounded-lg transition-all flex items-center justify-center", groupBy === 'item' ? "bg-brand text-white shadow-sm" : "hover:bg-paper text-ink/40")}
+                 >
+                   <Package className="w-4 h-4" />
+                   <span className="sm:hidden ml-2 text-xs font-bold uppercase tracking-wider">By Item</span>
+                 </button>
+                 <button 
+                  onClick={() => setGroupBy('client')}
+                  className={cn("flex-1 sm:flex-none p-1.5 rounded-lg transition-all flex items-center justify-center", groupBy === 'client' ? "bg-brand text-white shadow-sm" : "hover:bg-paper text-ink/40")}
+                 >
+                   <BarChart3 className="w-4 h-4" />
+                   <span className="sm:hidden ml-2 text-xs font-bold uppercase tracking-wider">By Client</span>
+                 </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* FEATURE 11 - QUICK VISUAL SUMMARY STRIP */}
+      {isEnhanced && (
+        <div className="mb-8">
+          <QuickVisualSummaryStrip 
+            fastSellersCount={fastSellersCount}
+            lowStockCount={lowStockCount}
+            oversoldCount={oversoldCount}
+            topCategory={topCategoryAndStats.topCat}
+            onActionClick={(action) => {
+              if (action === 'inventory' && canAccessInventoryIntelligence) {
+                setActiveSection('inventory');
+              } else if (action === 'records') {
+                setActiveSection('records');
+              }
+            }}
+          />
+        </div>
+      )}
 
       {canUseSmartGlobalSearch && search.trim() && (
         <div className="mb-6 bg-brand/5 border border-brand/15 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-brand font-medium no-print">
@@ -667,39 +776,77 @@ export function ItemsSoldView() {
       ) : (
         <>
           {/* Summary Metrics */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-10">
-            <div className="bg-white border border-black/5 p-6 rounded-2xl shadow-sm">
-               <div className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">Total Lines</div>
-               <div className="text-2xl font-bold text-ink">{filtered.length}</div>
+          {isEnhanced ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-10">
+              <PolishedKPICard 
+                title="Total Ledger Lines"
+                value={filtered.length}
+                icon={<List className="w-5 h-5 text-indigo-500" />}
+                comparisonValue="Records matching search"
+                tooltip="The absolute count of invoice item entries adhering to active visual criteria."
+              />
+              <PolishedKPICard 
+                title="Total Units Sold"
+                value={totalQty}
+                icon={<Package className="w-5 h-5 text-amber-500" />}
+                trend={{ type: totalQty > 0 ? 'up' : 'stable', value: 'Volume track' }}
+                comparisonValue="Sum of items' quantities"
+                tooltip="Sum cumulative shipping weight units calculated dynamically."
+              />
+              <PolishedKPICard 
+                title="Total Value (Revenue)"
+                value={formatCurrency(totalVal, profile?.currency)}
+                icon={<DollarSign className="w-5 h-5 text-emerald-500" />}
+                trend={{ type: totalVal >= topCategoryAndStats.topCatAmount / 2 ? 'up' : 'down', value: 'Revenue pace' }}
+                sparklineData={sparklineData}
+                comparisonValue={`Top cat: ${topCategoryAndStats.topCat || 'None'}`}
+                statusColor="text-emerald-600"
+                tooltip="Aggregated net transaction currency value for current selections."
+              />
             </div>
-            <div className="bg-white border border-black/5 p-6 rounded-2xl shadow-sm">
-               <div className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">Total Qty</div>
-               <div className="text-2xl font-bold text-brand">{totalQty}</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-10">
+              <div className="bg-white border border-black/5 p-6 rounded-2xl shadow-sm">
+                 <div className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">Total Lines</div>
+                 <div className="text-2xl font-bold text-ink">{filtered.length}</div>
+              </div>
+              <div className="bg-white border border-black/5 p-6 rounded-2xl shadow-sm">
+                 <div className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">Total Qty</div>
+                 <div className="text-2xl font-bold text-brand">{totalQty}</div>
+              </div>
+              <div className="bg-white border border-black/5 p-6 rounded-2xl shadow-sm sm:col-span-2 md:col-span-1">
+                 <div className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">Total Value</div>
+                 <div className="text-2xl font-bold font-mono text-brand">{formatCurrency(totalVal, profile?.currency)}</div>
+              </div>
             </div>
-            <div className="bg-white border border-black/5 p-6 rounded-2xl shadow-sm sm:col-span-2 md:col-span-1">
-               <div className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">Total Value</div>
-               <div className="text-2xl font-bold font-mono text-brand">{formatCurrency(totalVal, profile?.currency)}</div>
-            </div>
-          </div>
+          )}
 
           {/* Main List / Content */}
           <div className="grid gap-4">
             {loading ? (
               <div className="p-20 text-center animate-pulse text-ink/20 font-bold">Scanning records...</div>
             ) : filtered.length === 0 ? (
-              <div className="bg-white border border-dashed border-black/10 p-16 md:p-20 rounded-2xl text-center space-y-4">
-                 <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
-                   <Package className="w-6 h-6" />
-                 </div>
-                 <h3 className="font-bold text-ink text-base">No matching sales found</h3>
-                 <p className="text-sm text-ink/40 max-w-xs mx-auto">Try adjusting your filters, searching for something else, or resetting all search conditions.</p>
-                 <button
-                   onClick={handleResetFilters}
-                   className="mt-2 px-4 py-2 bg-brand text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-all shadow-sm"
-                 >
-                   Reset All Filters
-                 </button>
-              </div>
+              isEnhanced ? (
+                <EmptyStateView 
+                  type="search" 
+                  onReset={handleResetFilters}
+                  title="No Ledger Records Match Search"
+                />
+              ) : (
+                <div className="bg-white border border-dashed border-black/10 p-16 md:p-20 rounded-2xl text-center space-y-4">
+                   <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto">
+                     <Package className="w-6 h-6" />
+                   </div>
+                   <h3 className="font-bold text-ink text-base">No matching sales found</h3>
+                   <p className="text-sm text-ink/40 max-w-xs mx-auto">Try adjusting your filters, searching for something else, or resetting all search conditions.</p>
+                   <button
+                     onClick={handleResetFilters}
+                     className="mt-2 px-4 py-2 bg-brand text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-all shadow-sm"
+                   >
+                     Reset All Filters
+                   </button>
+                </div>
+              )
             ) : renderContent()}
           </div>
         </>

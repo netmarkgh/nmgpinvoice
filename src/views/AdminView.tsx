@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Profile } from '../types';
 import { formatCurrency, cn, getInitials } from '../lib/utils';
 import { motion } from 'motion/react';
+import { isUXEnhancedEnabled, toggleUXEnhanced } from '../lib/visualEngine';
 import { 
   Users, 
   CheckCircle, 
@@ -28,6 +29,13 @@ export function AdminView() {
   const { profile: loggedInProfile } = useAuth();
   const [members, setMembers] = useState<Profile[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [uxEnabled, setUxEnabled] = useState(isUXEnhancedEnabled());
+
+  const handleToggleUX = () => {
+    const nextVal = !uxEnabled;
+    setUxEnabled(nextVal);
+    toggleUXEnhanced(nextVal);
+  };
   const [loading, setLoading] = useState(true);
   
   // Subscription Modal State
@@ -159,6 +167,45 @@ export function AdminView() {
         <div className="bg-white border border-black/5 p-6 rounded-2xl shadow-sm">
            <div className="text-[10px] font-bold text-ink/40 uppercase tracking-widest mb-1">Collected</div>
            <div className="text-2xl font-bold font-mono text-brand leading-tight">{formatCurrency(collected)}</div>
+        </div>
+      </div>
+
+      {/* Global Dashboard Visual Configurations Center */}
+      <div className="bg-gradient-to-r from-brand/[0.02] to-indigo-50/10 border border-brand/20 p-6 md:p-8 rounded-3xl shadow-sm mb-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-brand/10 text-brand rounded-2xl shrink-0">
+              <Settings className="w-6 h-6 animate-spin-slow" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-ink text-base tracking-tight">Visual Indicators & ERP UX Enhancements</h3>
+              <p className="text-xs text-ink/40 mt-1 max-w-xl leading-relaxed">
+                Toggle the production-ready ERP/POS Dashboards visual layer site-wide. This includes color coding indicators, analytical status badges, target visualizers, and summary strips.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-[10px] font-black uppercase text-ink/50 tracking-wider">
+              {uxEnabled ? 'System Active' : 'System Suspended'}
+            </span>
+            <button
+              onClick={handleToggleUX}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2",
+                uxEnabled ? "bg-brand" : "bg-black/15"
+              )}
+              role="switch"
+              aria-checked={uxEnabled}
+            >
+              <span
+                className={cn(
+                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                  uxEnabled ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
+          </div>
         </div>
       </div>
 
