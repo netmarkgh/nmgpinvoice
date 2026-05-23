@@ -40,12 +40,12 @@ export interface InventoryIntelligenceResult {
 
 // Default initial stocks for popular products to make UI alive instantly
 export const DEFAULT_INITIAL_STOCKS: Record<string, number> = {
-  'Caps': 100,
-  'Glass': 120,
-  'Yogs Vanilla': 60,
-  'Yogs Strawberry': 60,
-  'Capsules': 150,
-  'Bottles': 200,
+  'Caps': 0,
+  'Glass': 0,
+  'Yogs Vanilla': 0,
+  'Yogs Strawberry': 0,
+  'Capsules': 0,
+  'Bottles': 0,
 };
 
 /**
@@ -245,11 +245,10 @@ export function generateInventoryIntelligence(
   allDescriptions.forEach(desc => {
     const quantitySold = salesByItem[desc] || 0;
     
-    // Default config: fallback to 50 if product stock not set
+    // Default config: fallback to 0 if product stock not set
     let totalStock = stocks[desc];
     if (totalStock === undefined) {
-      // Intelligently default to a reasonable stock: twice sold amount or 50
-      totalStock = quantitySold > 0 ? Math.max(50, Math.ceil(quantitySold * 1.5)) : 50;
+      totalStock = 0;
     }
 
     const remainingStock = totalStock - quantitySold;

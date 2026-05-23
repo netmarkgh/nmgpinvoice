@@ -788,7 +788,7 @@ export function ItemsSoldView() {
           <SmartAIInsightsView
             filteredData={filtered}
             userId={user ? user.id : 'global'}
-            daysObserved={getDaysObserved(selectedDateFilter, customStartDate, customEndDate)}
+            daysObserved={daysObserved}
             isAdmin={isAdmin}
             inventoryIntelligence={inventoryIntelligence}
             onDrilldownAction={(type, val) => {
