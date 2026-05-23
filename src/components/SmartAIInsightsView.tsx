@@ -43,7 +43,7 @@ export function SmartAIInsightsView({
 }: SmartAIInsightsViewProps) {
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
   const [speaking, setSpeaking] = useState(false);
-  const [chatOpen, setChatOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(true);
   const [chatQuery, setChatQuery] = useState('');
   const [chatHistory, setChatHistory] = useState<Array<{ sender: 'user' | 'assistant'; text: string; date: Date }>>([
     {

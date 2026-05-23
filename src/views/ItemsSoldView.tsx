@@ -523,7 +523,7 @@ export function ItemsSoldView() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto">
+    <div className={cn("p-4 md:p-8 max-w-6xl mx-auto", mobileQuickActionsEnabled ? "pb-36 md:pb-44" : "pb-12")}>
       {/* FEATURE 10 - STICKY ACTION BAR */}
       <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-black/5 -mx-4 md:-mx-8 px-4 md:px-8 py-4 mb-8 shadow-sm no-print flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
