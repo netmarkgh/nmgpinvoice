@@ -167,6 +167,28 @@ export function ItemsSoldView() {
     return () => window.removeEventListener('mobile_quick_actions_toggled', handleToggle);
   }, []);
 
+  useEffect(() => {
+    const focusItem = localStorage.getItem('focus_item_desc');
+    if (focusItem) {
+      setSearch(focusItem);
+      setActiveSection('inventory'); // Automatically open stock management
+      localStorage.removeItem('focus_item_desc');
+    }
+
+    const handleFocusChg = () => {
+      const updated = localStorage.getItem('focus_item_desc');
+      if (updated) {
+        setSearch(updated);
+        setActiveSection('inventory'); // Automatically open stock management
+        localStorage.removeItem('focus_item_desc');
+      }
+    };
+    window.addEventListener('focus_item_desc_changed', handleFocusChg);
+    return () => {
+      window.removeEventListener('focus_item_desc_changed', handleFocusChg);
+    };
+  }, []);
+
   const isAdmin = profile?.role === 'admin';
   const canManageItems = isAdmin || profile?.permissions?.includes('can_manage_items');
   const canUseAdvancedFilters = isAdmin || profile?.permissions?.includes('can_use_advanced_items_filters');

@@ -443,6 +443,31 @@ export function toggleMobileQuickActions(enabled: boolean) {
 }
 
 /**
+ * Checks if the Real-Time Notifications & Alerts System is enabled.
+ * Defaults to true.
+ */
+export function isNotificationsEnabled(): boolean {
+  try {
+    const val = localStorage.getItem('global_notifications_enabled');
+    return val !== 'false';
+  } catch (e) {
+    return true;
+  }
+}
+
+/**
+ * Sets the website's Notifications & Alerts System status.
+ */
+export function toggleNotifications(enabled: boolean) {
+  try {
+    localStorage.setItem('global_notifications_enabled', String(enabled));
+    window.dispatchEvent(new Event('notifications_enabled_toggled'));
+  } catch (e) {
+    console.error('Error holding Notifications preference key', e);
+  }
+}
+
+/**
  * FEATURE 13 - CENTRALIZED PIPELINE
  * Translates a collection of active invoices into dashboard summary stats.
  */

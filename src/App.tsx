@@ -13,6 +13,7 @@ import { ClientsView } from './views/ClientsView';
 import { ItemsSoldView } from './views/ItemsSoldView';
 import { SettingsView } from './views/SettingsView';
 import { AdminView } from './views/AdminView';
+import { NotificationCenter } from './components/NotificationCenter';
 
 export default function App() {
   const { user, loading, profile, isRecoveryMode } = useAuth();

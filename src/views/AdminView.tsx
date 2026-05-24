@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Profile } from '../types';
 import { formatCurrency, cn, getInitials } from '../lib/utils';
 import { motion } from 'motion/react';
-import { isUXEnhancedEnabled, toggleUXEnhanced, isAIInsightsEnabled, toggleAIInsights, isMobileQuickActionsEnabled, toggleMobileQuickActions } from '../lib/visualEngine';
+import { isUXEnhancedEnabled, toggleUXEnhanced, isAIInsightsEnabled, toggleAIInsights, isMobileQuickActionsEnabled, toggleMobileQuickActions, isNotificationsEnabled, toggleNotifications } from '../lib/visualEngine';
 import { 
   Users, 
   CheckCircle, 
@@ -24,7 +24,8 @@ import {
   Settings,
   X,
   Sparkles,
-  Smartphone
+  Smartphone,
+  Bell
 } from 'lucide-react';
 
 export function AdminView() {
@@ -34,6 +35,7 @@ export function AdminView() {
   const [uxEnabled, setUxEnabled] = useState(isUXEnhancedEnabled());
   const [aiEnabled, setAiEnabled] = useState(isAIInsightsEnabled());
   const [mobileQuickEnabled, setMobileQuickEnabled] = useState(isMobileQuickActionsEnabled());
+  const [notificationsEnabled, setNotificationsEnabled] = useState(isNotificationsEnabled());
 
   const handleToggleUX = () => {
     const nextVal = !uxEnabled;
@@ -51,6 +53,12 @@ export function AdminView() {
     const nextVal = !mobileQuickEnabled;
     setMobileQuickEnabled(nextVal);
     toggleMobileQuickActions(nextVal);
+  };
+
+  const handleToggleNotifications = () => {
+    const nextVal = !notificationsEnabled;
+    setNotificationsEnabled(nextVal);
+    toggleNotifications(nextVal);
   };
   const [loading, setLoading] = useState(true);
   
@@ -290,6 +298,42 @@ export function AdminView() {
                 className={cn(
                   "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
                   mobileQuickEnabled ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-6 border-t border-brand/10">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-indigo-100 text-indigo-600 rounded-2xl shrink-0">
+              <Bell className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-ink text-base tracking-tight">Real-Time Notifications & Centralized Alert Center</h3>
+              <p className="text-xs text-ink/40 mt-1 max-w-xl leading-relaxed">
+                Deploy the high-priority business notification ecosystem. Includes Shopify-style badge indicators, push-ready delivery controls, stock risk triggers, payment collections sync, and custom timelines.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-[10px] font-black uppercase text-ink/50 tracking-wider">
+              {notificationsEnabled ? 'Alert Hub Enabled' : 'Alert Hub Suspended'}
+            </span>
+            <button
+              onClick={handleToggleNotifications}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2",
+                notificationsEnabled ? "bg-brand" : "bg-black/15"
+              )}
+              role="switch"
+              aria-checked={notificationsEnabled}
+            >
+              <span
+                className={cn(
+                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                  notificationsEnabled ? "translate-x-5" : "translate-x-0"
                 )}
               />
             </button>

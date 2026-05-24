@@ -38,6 +38,26 @@ export function HistoryView() {
     };
   }, []);
 
+  useEffect(() => {
+    const focusInv = localStorage.getItem('focus_invoice_number');
+    if (focusInv) {
+      setSearch(focusInv);
+      localStorage.removeItem('focus_invoice_number');
+    }
+
+    const handleFocusChg = () => {
+      const updated = localStorage.getItem('focus_invoice_number');
+      if (updated) {
+        setSearch(updated);
+        localStorage.removeItem('focus_invoice_number');
+      }
+    };
+    window.addEventListener('focus_invoice_number_changed', handleFocusChg);
+    return () => {
+      window.removeEventListener('focus_invoice_number_changed', handleFocusChg);
+    };
+  }, []);
+
   const toggleMenu = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
