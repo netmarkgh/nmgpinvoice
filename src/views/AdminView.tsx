@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Profile } from '../types';
 import { formatCurrency, cn, getInitials } from '../lib/utils';
 import { motion } from 'motion/react';
-import { isUXEnhancedEnabled, toggleUXEnhanced, isAIInsightsEnabled, toggleAIInsights, isMobileQuickActionsEnabled, toggleMobileQuickActions, isNotificationsEnabled, toggleNotifications, isCustomerInsightsEnabled, toggleCustomerInsights } from '../lib/visualEngine';
+import { isUXEnhancedEnabled, toggleUXEnhanced, isAIInsightsEnabled, toggleAIInsights, isMobileQuickActionsEnabled, toggleMobileQuickActions, isNotificationsEnabled, toggleNotifications, isCustomerInsightsEnabled, toggleCustomerInsights, isBusinessHubEnabled, toggleBusinessHub } from '../lib/visualEngine';
 import { 
   Users, 
   CheckCircle, 
@@ -25,7 +25,8 @@ import {
   X,
   Sparkles,
   Smartphone,
-  Bell
+  Bell,
+  Layers
 } from 'lucide-react';
 
 export function AdminView() {
@@ -37,6 +38,7 @@ export function AdminView() {
   const [mobileQuickEnabled, setMobileQuickEnabled] = useState(isMobileQuickActionsEnabled());
   const [notificationsEnabled, setNotificationsEnabled] = useState(isNotificationsEnabled());
   const [customerInsightsEnabled, setCustomerInsightsEnabled] = useState(isCustomerInsightsEnabled());
+  const [businessHubEnabled, setBusinessHubEnabled] = useState(isBusinessHubEnabled());
 
   const handleToggleUX = () => {
     const nextVal = !uxEnabled;
@@ -66,6 +68,12 @@ export function AdminView() {
     const nextVal = !customerInsightsEnabled;
     setCustomerInsightsEnabled(nextVal);
     toggleCustomerInsights(nextVal);
+  };
+
+  const handleToggleBusinessHub = () => {
+    const nextVal = !businessHubEnabled;
+    setBusinessHubEnabled(nextVal);
+    toggleBusinessHub(nextVal);
   };
   const [loading, setLoading] = useState(true);
   
@@ -377,6 +385,42 @@ export function AdminView() {
                 className={cn(
                   "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
                   customerInsightsEnabled ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-6 border-t border-brand/10" id="admin-business-hub-toggle">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-indigo-100 text-indigo-600 rounded-2xl shrink-0">
+              <Layers className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-ink text-base tracking-tight">Business Operations Hub Workspace</h3>
+              <p className="text-xs text-ink/40 mt-1 max-w-xl leading-relaxed">
+                Empower your workspace with Odoo/ERPNext style internal trackers: high-fidelity cash in/out logs, daily expense analytics charts, task checklists, and suppliers interacts logs.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-[10px] font-black uppercase text-ink/50 tracking-wider">
+              {businessHubEnabled ? 'Business Hub Active' : 'Business Hub Suspended'}
+            </span>
+            <button
+              onClick={handleToggleBusinessHub}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2",
+                businessHubEnabled ? "bg-brand" : "bg-black/15"
+              )}
+              role="switch"
+              aria-checked={businessHubEnabled}
+            >
+              <span
+                className={cn(
+                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                  businessHubEnabled ? "translate-x-5" : "translate-x-0"
                 )}
               />
             </button>

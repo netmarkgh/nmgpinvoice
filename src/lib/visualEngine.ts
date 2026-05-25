@@ -493,6 +493,31 @@ export function toggleCustomerInsights(enabled: boolean) {
 }
 
 /**
+ * Checks if the Business Operations Hub Engine is enabled.
+ * Defaults to true.
+ */
+export function isBusinessHubEnabled(): boolean {
+  try {
+    const val = localStorage.getItem('global_business_hub_enabled');
+    return val !== 'false';
+  } catch (e) {
+    return true;
+  }
+}
+
+/**
+ * Sets the Business Operations Hub Engine status.
+ */
+export function toggleBusinessHub(enabled: boolean) {
+  try {
+    localStorage.setItem('global_business_hub_enabled', String(enabled));
+    window.dispatchEvent(new Event('business_hub_toggled'));
+  } catch (e) {
+    console.error('Error holding Business Hub preference key', e);
+  }
+}
+
+/**
  * FEATURE 13 - CENTRALIZED PIPELINE
  * Translates a collection of active invoices into dashboard summary stats.
  */
