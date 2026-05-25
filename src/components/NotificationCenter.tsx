@@ -240,7 +240,7 @@ export function NotificationCenter({ onNavigate, filteredSalesData = [] }: Notif
           />
 
           <div className={cn(
-            "fixed inset-x-4 md:absolute bottom-4 md:bottom-auto md:top-12 md:right-0 z-50 bg-white border border-black/10 rounded-2xl shadow-xl flex flex-col overflow-hidden transition-all duration-300 transform animate-in fade-in slide-in-from-top-4",
+            "fixed inset-x-4 md:absolute md:left-auto md:right-0 bottom-4 md:bottom-auto md:top-12 z-50 bg-white border border-black/10 rounded-2xl shadow-xl flex flex-col overflow-hidden transition-all duration-300 transform animate-in fade-in slide-in-from-top-4",
             isMobile ? "h-[85vh]" : "w-[440px] max-h-[640px]"
           )}
           role="dialog"
