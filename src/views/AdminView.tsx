@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Profile } from '../types';
 import { formatCurrency, cn, getInitials } from '../lib/utils';
 import { motion } from 'motion/react';
-import { isUXEnhancedEnabled, toggleUXEnhanced, isAIInsightsEnabled, toggleAIInsights, isMobileQuickActionsEnabled, toggleMobileQuickActions, isNotificationsEnabled, toggleNotifications } from '../lib/visualEngine';
+import { isUXEnhancedEnabled, toggleUXEnhanced, isAIInsightsEnabled, toggleAIInsights, isMobileQuickActionsEnabled, toggleMobileQuickActions, isNotificationsEnabled, toggleNotifications, isCustomerInsightsEnabled, toggleCustomerInsights } from '../lib/visualEngine';
 import { 
   Users, 
   CheckCircle, 
@@ -36,6 +36,7 @@ export function AdminView() {
   const [aiEnabled, setAiEnabled] = useState(isAIInsightsEnabled());
   const [mobileQuickEnabled, setMobileQuickEnabled] = useState(isMobileQuickActionsEnabled());
   const [notificationsEnabled, setNotificationsEnabled] = useState(isNotificationsEnabled());
+  const [customerInsightsEnabled, setCustomerInsightsEnabled] = useState(isCustomerInsightsEnabled());
 
   const handleToggleUX = () => {
     const nextVal = !uxEnabled;
@@ -59,6 +60,12 @@ export function AdminView() {
     const nextVal = !notificationsEnabled;
     setNotificationsEnabled(nextVal);
     toggleNotifications(nextVal);
+  };
+
+  const handleToggleCustomerInsights = () => {
+    const nextVal = !customerInsightsEnabled;
+    setCustomerInsightsEnabled(nextVal);
+    toggleCustomerInsights(nextVal);
   };
   const [loading, setLoading] = useState(true);
   
@@ -334,6 +341,42 @@ export function AdminView() {
                 className={cn(
                   "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
                   notificationsEnabled ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-6 border-t border-brand/10" id="admin-cust-insights-toggle">
+          <div className="flex items-start gap-4">
+            <div className="p-3 bg-rose-100 text-rose-600 rounded-2xl shrink-0">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-ink text-base tracking-tight">Customer Buying Insights Dashboard Engine</h3>
+              <p className="text-xs text-ink/40 mt-1 max-w-xl leading-relaxed">
+                Unlock deep-dive Shopify/Salesforce CRM style diagnostics analyzing customer purchasing counts, loyalty categories, churn indexes, and automatic behavioral suggestions.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-[10px] font-black uppercase text-ink/50 tracking-wider">
+              {customerInsightsEnabled ? 'CRM Insights Active' : 'CRM Insights Suspended'}
+            </span>
+            <button
+              onClick={handleToggleCustomerInsights}
+              className={cn(
+                "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2",
+                customerInsightsEnabled ? "bg-brand" : "bg-black/15"
+              )}
+              role="switch"
+              aria-checked={customerInsightsEnabled}
+            >
+              <span
+                className={cn(
+                  "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                  customerInsightsEnabled ? "translate-x-5" : "translate-x-0"
                 )}
               />
             </button>

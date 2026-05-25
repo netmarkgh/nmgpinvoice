@@ -110,15 +110,39 @@ export default function App() {
       />
       
       <main className="flex-1 overflow-y-auto h-screen relative">
-        {/* Mobile Header */}
-        <div className="lg:hidden h-14 bg-white border-b border-black/5 flex items-center px-4 sticky top-0 z-30 no-print">
+        {/* Desktop floating Alerts Center Node */}
+        <div className="absolute top-6 right-8 z-40 hidden lg:block no-print">
+          <NotificationCenter onNavigate={(tab, val) => {
+            setActiveTab(tab as TabId);
+            if (tab === 'history' && val) {
+              localStorage.setItem('focus_invoice_number', val);
+              window.dispatchEvent(new Event('focus_invoice_number_changed'));
+            } else if (tab === 'items' && val) {
+              localStorage.setItem('focus_item_desc', val);
+              window.dispatchEvent(new Event('focus_item_desc_changed'));
+            }
+          }} />
+        </div>
+
+        {/* Mobile Header with integrated alert center */}
+        <div className="lg:hidden h-14 bg-white border-b border-black/5 flex items-center justify-between px-4 sticky top-0 z-30 no-print">
           <button 
             onClick={() => setIsSidebarOpen(true)}
-            className="p-2 -ml-2 text-ink/60 hover:text-ink transition-colors flex items-center justify-center"
+            className="p-2 -ml-2 text-ink/60 hover:text-ink transition-colors flex items-center justify-center animate-none"
           >
             <Menu className="w-6 h-6" />
           </button>
-          <div className="flex-1 text-center font-bold text-brand tracking-tighter text-xl pr-8">NMG</div>
+          <div className="font-bold text-brand tracking-tighter text-xl">NMG</div>
+          <NotificationCenter onNavigate={(tab, val) => {
+            setActiveTab(tab as TabId);
+            if (tab === 'history' && val) {
+              localStorage.setItem('focus_invoice_number', val);
+              window.dispatchEvent(new Event('focus_invoice_number_changed'));
+            } else if (tab === 'items' && val) {
+              localStorage.setItem('focus_item_desc', val);
+              window.dispatchEvent(new Event('focus_item_desc_changed'));
+            }
+          }} />
         </div>
 
         <AnimatePresence mode="wait">

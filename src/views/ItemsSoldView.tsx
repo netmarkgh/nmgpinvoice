@@ -2,14 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCurrency, cn } from '../lib/utils';
-import { Search, LayoutGrid, List, BarChart3, Package, Filter, RotateCcw, Hash, Info, FileText, ChevronRight, DollarSign, Sparkles } from 'lucide-react';
+import { Search, LayoutGrid, List, BarChart3, Package, Filter, RotateCcw, Hash, Info, FileText, ChevronRight, DollarSign, Sparkles, Users } from 'lucide-react';
 import { SalesAnalytics } from '../components/SalesAnalytics';
 import { InventoryIntelligence } from '../components/InventoryIntelligence';
 import { SalesDrillDown } from '../components/SalesDrillDown';
 import { getProductCategory } from '../lib/drillDownEngine';
 import { SmartGlobalSearch, HighlightText } from '../components/SmartGlobalSearch';
 import { generateSmartSearchEngine } from '../lib/searchEngine';
-import { isUXEnhancedEnabled, isAIInsightsEnabled, isMobileQuickActionsEnabled } from '../lib/visualEngine';
+import { isUXEnhancedEnabled, isAIInsightsEnabled, isMobileQuickActionsEnabled, isCustomerInsightsEnabled } from '../lib/visualEngine';
+import { CustomerIntelligenceView } from '../components/CustomerIntelligenceView';
 import { getDaysObserved, generateInventoryIntelligence } from '../lib/inventoryEngine';
 import { SmartAIInsightsView } from '../components/SmartAIInsightsView';
 import { MobileQuickActionsContainer } from '../components/MobileQuickActionsContainer';
@@ -147,9 +148,18 @@ export function ItemsSoldView() {
   const [customEndDate, setCustomEndDate] = useState('');
   const [selectedClient, setSelectedClient] = useState('all');
   const [invoiceReferenceQuery, setInvoiceReferenceQuery] = useState('');
-  const [activeSection, setActiveSection] = useState<'analytics' | 'records' | 'inventory' | 'intelligence'>('analytics');
+  const [activeSection, setActiveSection] = useState<'analytics' | 'records' | 'inventory' | 'intelligence' | 'customer_insights'>('analytics');
   const [aiInsightsEnabled, setAiInsightsEnabled] = useState(isAIInsightsEnabled());
   const [mobileQuickActionsEnabled, setMobileQuickActionsEnabled] = useState(isMobileQuickActionsEnabled());
+  const [customerInsightsEnabled, setCustomerInsightsEnabled] = useState(isCustomerInsightsEnabled());
+
+  useEffect(() => {
+    const handleToggle = () => {
+      setCustomerInsightsEnabled(isCustomerInsightsEnabled());
+    };
+    window.addEventListener('customer_insights_toggled', handleToggle);
+    return () => window.removeEventListener('customer_insights_toggled', handleToggle);
+  }, []);
 
   useEffect(() => {
     const handleToggle = () => {
@@ -582,6 +592,14 @@ export function ItemsSoldView() {
                     <Package className="w-3.5 h-3.5" /> Inventory Intelligence
                   </button>
                 )}
+                {customerInsightsEnabled && (
+                  <button 
+                    onClick={() => setActiveSection('customer_insights')}
+                    className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer", activeSection === 'customer_insights' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
+                  >
+                    <Users className="w-3.5 h-3.5" /> Customer Insights
+                  </button>
+                )}
                 <button 
                   onClick={() => setActiveSection('records')}
                   className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer", activeSection === 'records' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
@@ -858,6 +876,15 @@ export function ItemsSoldView() {
                 setDrillDownConfig({ type: 'item', targetValue: itemName });
               }
             }}
+          />
+        )
+      ) : customerInsightsEnabled && activeSection === 'customer_insights' ? (
+        loading ? (
+          <div className="p-20 text-center animate-pulse text-indigo-500/20 font-bold">Assembling Customer Intelligence...</div>
+        ) : (
+          <CustomerIntelligenceView 
+            filteredData={filtered} 
+            currencySymbol={profile?.currency} 
           />
         )
       ) : (

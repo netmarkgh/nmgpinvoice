@@ -468,6 +468,31 @@ export function toggleNotifications(enabled: boolean) {
 }
 
 /**
+ * Checks if the Customer Buying Insights Engine is enabled.
+ * Defaults to true.
+ */
+export function isCustomerInsightsEnabled(): boolean {
+  try {
+    const val = localStorage.getItem('global_customer_insights_enabled');
+    return val !== 'false';
+  } catch (e) {
+    return true;
+  }
+}
+
+/**
+ * Sets the website's Customer Buying Insights Engine status.
+ */
+export function toggleCustomerInsights(enabled: boolean) {
+  try {
+    localStorage.setItem('global_customer_insights_enabled', String(enabled));
+    window.dispatchEvent(new Event('customer_insights_toggled'));
+  } catch (e) {
+    console.error('Error holding Customer Insights preference key', e);
+  }
+}
+
+/**
  * FEATURE 13 - CENTRALIZED PIPELINE
  * Translates a collection of active invoices into dashboard summary stats.
  */
