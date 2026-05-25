@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   FilePlus2, 
@@ -10,12 +10,14 @@ import {
   LogOut,
   ChevronRight,
   Menu,
-  X
+  X,
+  Layers
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { cn, getInitials } from '../lib/utils';
+import { isBusinessHubEnabled } from '../lib/visualEngine';
 
-export type TabId = 'dashboard' | 'new-invoice' | 'history' | 'clients' | 'items' | 'settings' | 'admin';
+export type TabId = 'dashboard' | 'new-invoice' | 'history' | 'clients' | 'items' | 'business-hub' | 'settings' | 'admin';
 
 interface SidebarProps {
   activeTab: TabId;
@@ -26,15 +28,31 @@ interface SidebarProps {
 
 export function Sidebar({ activeTab, onTabChange, isOpen, onClose }: SidebarProps) {
   const { profile, signOut, user } = useAuth();
+  const [hubEnabled, setHubEnabled] = useState(() => isBusinessHubEnabled());
+
+  useEffect(() => {
+    const handleToggle = () => {
+      setHubEnabled(isBusinessHubEnabled());
+    };
+    window.addEventListener('business_hub_toggled', handleToggle);
+    return () => window.removeEventListener('business_hub_toggled', handleToggle);
+  }, []);
   
-  const menuItems = [
+  const baseItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'new-invoice', label: 'New Invoice', icon: FilePlus2 },
     { id: 'history', label: 'History', icon: History },
     { id: 'clients', label: 'Clients', icon: Users, permission: 'can_manage_clients' },
     { id: 'items', label: 'Items Sold', icon: TrendingUp, permission: 'can_manage_items' },
-    { id: 'settings', label: 'Settings', icon: Settings },
-  ].filter(item => {
+  ];
+
+  if (hubEnabled) {
+    baseItems.push({ id: 'business-hub', label: 'Business Hub', icon: Layers });
+  }
+
+  baseItems.push({ id: 'settings', label: 'Settings', icon: Settings });
+
+  const menuItems = baseItems.filter(item => {
     if (profile?.role === 'admin') return true;
     if (!item.permission) return true;
     return profile?.permissions?.includes(item.permission);

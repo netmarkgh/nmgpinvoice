@@ -9,9 +9,8 @@ import { SalesDrillDown } from '../components/SalesDrillDown';
 import { getProductCategory } from '../lib/drillDownEngine';
 import { SmartGlobalSearch, HighlightText } from '../components/SmartGlobalSearch';
 import { generateSmartSearchEngine } from '../lib/searchEngine';
-import { isUXEnhancedEnabled, isAIInsightsEnabled, isMobileQuickActionsEnabled, isCustomerInsightsEnabled, isBusinessHubEnabled } from '../lib/visualEngine';
+import { isUXEnhancedEnabled, isAIInsightsEnabled, isMobileQuickActionsEnabled, isCustomerInsightsEnabled } from '../lib/visualEngine';
 import { CustomerIntelligenceView } from '../components/CustomerIntelligenceView';
-import { BusinessHubView } from '../components/BusinessHubView';
 import { getDaysObserved, generateInventoryIntelligence } from '../lib/inventoryEngine';
 import { SmartAIInsightsView } from '../components/SmartAIInsightsView';
 import { MobileQuickActionsContainer } from '../components/MobileQuickActionsContainer';
@@ -149,19 +148,10 @@ export function ItemsSoldView() {
   const [customEndDate, setCustomEndDate] = useState('');
   const [selectedClient, setSelectedClient] = useState('all');
   const [invoiceReferenceQuery, setInvoiceReferenceQuery] = useState('');
-  const [activeSection, setActiveSection] = useState<'analytics' | 'records' | 'inventory' | 'intelligence' | 'customer_insights' | 'business_hub'>('analytics');
+  const [activeSection, setActiveSection] = useState<'analytics' | 'records' | 'inventory' | 'intelligence' | 'customer_insights'>('analytics');
   const [aiInsightsEnabled, setAiInsightsEnabled] = useState(isAIInsightsEnabled());
   const [mobileQuickActionsEnabled, setMobileQuickActionsEnabled] = useState(isMobileQuickActionsEnabled());
   const [customerInsightsEnabled, setCustomerInsightsEnabled] = useState(isCustomerInsightsEnabled());
-  const [businessHubEnabled, setBusinessHubEnabled] = useState(isBusinessHubEnabled());
-
-  useEffect(() => {
-    const handleToggle = () => {
-      setBusinessHubEnabled(isBusinessHubEnabled());
-    };
-    window.addEventListener('business_hub_toggled', handleToggle);
-    return () => window.removeEventListener('business_hub_toggled', handleToggle);
-  }, []);
 
   useEffect(() => {
     const handleToggle = () => {
@@ -610,14 +600,7 @@ export function ItemsSoldView() {
                     <Users className="w-3.5 h-3.5" /> Customer Insights
                   </button>
                 )}
-                {businessHubEnabled && (
-                  <button 
-                    onClick={() => setActiveSection('business_hub')}
-                    className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer font-extrabold", activeSection === 'business_hub' ? "bg-indigo-600 text-white shadow-sm" : "text-indigo-600 hover:text-indigo-800")}
-                  >
-                    <Layers className="w-3.5 h-3.5" /> Business Hub Operations
-                  </button>
-                )}
+
                 <button 
                   onClick={() => setActiveSection('records')}
                   className={cn("px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer", activeSection === 'records' ? "bg-brand text-white shadow-sm" : "text-ink/50 hover:text-ink")}
@@ -896,10 +879,6 @@ export function ItemsSoldView() {
             }}
           />
         )
-      ) : businessHubEnabled && activeSection === 'business_hub' ? (
-        <BusinessHubView 
-          currencySymbol={profile?.currency} 
-        />
       ) : customerInsightsEnabled && activeSection === 'customer_insights' ? (
         loading ? (
           <div className="p-20 text-center animate-pulse text-indigo-500/20 font-bold">Assembling Customer Intelligence...</div>

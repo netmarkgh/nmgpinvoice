@@ -13,6 +13,7 @@ import { ClientsView } from './views/ClientsView';
 import { ItemsSoldView } from './views/ItemsSoldView';
 import { SettingsView } from './views/SettingsView';
 import { AdminView } from './views/AdminView';
+import { BusinessHubView } from './components/BusinessHubView';
 import { NotificationCenter } from './components/NotificationCenter';
 
 export default function App() {
@@ -88,6 +89,8 @@ export default function App() {
         }} />;
       case 'items': 
         return <ItemsSoldView />;
+      case 'business-hub':
+        return <BusinessHubView currencySymbol={profile?.currency} />;
       case 'settings': 
         return <SettingsView />;
       case 'admin': 
